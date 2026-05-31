@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ PrOOPt — Object-Oriented Prompt Engineering for Java.
+  ~
+  ~ Copyright (c) 2026 Akshay Rawal
+  ~ SPDX-License-Identifier: MIT
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.argonizer</groupId>
+    <artifactId>prooopt-parent</artifactId>
+    <version>0.1.0</version>
+    <packaging>pom</packaging>
+
+    <name>PrOOPt Parent</name>
+    <description>
+        PrOOPt — Object-Oriented Prompt Engineering for the JVM. Scoped, auditable LLM usage declared
+        at the function level: deterministic code, bounded on-device AI, or explicitly elevated cloud AI.
+    </description>
+    <url>https://github.com/argonizer/PrOOPt</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>argonizer</id>
+            <name>Akshay Rawal</name>
+            <url>https://github.com/argonizer</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/argonizer/PrOOPt.git</connection>
+        <developerConnection>scm:git:git@github.com:argonizer/PrOOPt.git</developerConnection>
+        <url>https://github.com/argonizer/PrOOPt</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <modules>
+        <module>prooopt-core</module>
+        <module>prooopt-runtime-local</module>
+        <module>prooopt-runtime-cloud</module>
+        <module>prooopt-example</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+          The build specification targets Java 25 (LTS). This repository's reference
+          environment ships Java 21 (also LTS), which supports every language feature
+          PrOOPt uses (records, sealed types, pattern matching, switch expressions) and
+          is JLama's own baseline. Bump this single property to 25 where a JDK 25 toolchain
+          is available; nothing else in the build needs to change.
+        -->
+        <java.release>21</java.release>
+        <maven.compiler.release>${java.release}</maven.compiler.release>
+
+        <!-- Dependency versions (managed centrally for all modules). -->
+        <spring.version>6.2.18</spring.version>
+        <spring-boot.version>3.5.14</spring-boot.version>
+        <aspectjweaver.version>1.9.24</aspectjweaver.version>
+        <jackson.version>2.21.4</jackson.version>
+        <log4j2.version>2.26.0</log4j2.version>
+        <snakeyaml.version>2.4</snakeyaml.version>
+        <junit.version>5.14.4</junit.version>
+        <mockito.version>5.20.0</mockito.version>
+
+        <!-- Runtime engines. -->
+        <jlama.version>0.8.4</jlama.version>
+        <anthropic.version>2.35.0</anthropic.version>
+
+        <!-- Plugin versions. -->
+        <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- BOM imports keep multi-artifact families version-aligned. -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j2.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- AspectJ weaver for @Aspect support under Spring AOP. -->
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjweaver</artifactId>
+                <version>${aspectjweaver.version}</version>
+            </dependency>
+
+            <!-- YAML config loading for the plain-Java (non-Spring) path. -->
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+
+            <!-- Optional Spring Boot auto-configuration. -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-autoconfigure</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+
+            <!-- JLama: pure-Java local inference (Vector API). -->
+            <dependency>
+                <groupId>com.github.tjake</groupId>
+                <artifactId>jlama-core</artifactId>
+                <version>${jlama.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.tjake</groupId>
+                <artifactId>jlama-native</artifactId>
+                <version>${jlama.version}</version>
+            </dependency>
+
+            <!-- Anthropic cloud SDK. -->
+            <dependency>
+                <groupId>com.anthropic</groupId>
+                <artifactId>anthropic-java</artifactId>
+                <version>${anthropic.version}</version>
+            </dependency>
+
+            <!-- Reactor modules of this build. -->
+            <dependency>
+                <groupId>io.github.argonizer</groupId>
+                <artifactId>prooopt-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.argonizer</groupId>
+                <artifactId>prooopt-runtime-local</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.argonizer</groupId>
+                <artifactId>prooopt-runtime-cloud</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Test stack. -->
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-junit-jupiter</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Every module gets the JUnit 5 engine for tests. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <!-- Required: PrOOPt resolves {paramName} placeholders from method
+                             parameter names via reflection, which needs -parameters. -->
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

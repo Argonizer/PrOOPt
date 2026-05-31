@@ -1,0 +1,5 @@
+/home/user/PrOOPt/prooopt-runtime-cloud/src/main/java/io/github/argonizer/prooopt/runtime/cloud/AbstractHttpCloudAdapter.java
+/home/user/PrOOPt/prooopt-runtime-cloud/src/main/java/io/github/argonizer/prooopt/runtime/cloud/AnthropicAdapter.java
+/home/user/PrOOPt/prooopt-runtime-cloud/src/main/java/io/github/argonizer/prooopt/runtime/cloud/CloudAdapter.java
+/home/user/PrOOPt/prooopt-runtime-cloud/src/main/java/io/github/argonizer/prooopt/runtime/cloud/CloudModelRouter.java
+/home/user/PrOOPt/prooopt-runtime-cloud/src/main/java/io/github/argonizer/prooopt/runtime/cloud/OpenAIAdapter.java

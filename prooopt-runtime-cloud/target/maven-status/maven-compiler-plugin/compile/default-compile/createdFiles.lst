@@ -1,0 +1,5 @@
+io/github/argonizer/prooopt/runtime/cloud/OpenAIAdapter.class
+io/github/argonizer/prooopt/runtime/cloud/CloudAdapter.class
+io/github/argonizer/prooopt/runtime/cloud/CloudModelRouter.class
+io/github/argonizer/prooopt/runtime/cloud/AbstractHttpCloudAdapter.class
+io/github/argonizer/prooopt/runtime/cloud/AnthropicAdapter.class
