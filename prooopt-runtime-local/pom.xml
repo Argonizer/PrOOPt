@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ PrOOPt — Object-Oriented Prompt Engineering for Java.
+  ~
+  ~ Copyright (c) 2026 Akshay Rawal
+  ~ SPDX-License-Identifier: MIT
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.argonizer</groupId>
+        <artifactId>prooopt-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>prooopt-runtime-local</artifactId>
+    <name>PrOOPt Runtime — Local</name>
+    <description>
+        On-device inference for the LOCAL tier via JLama (pure-Java, Vector API). Add this module to
+        run bounded AI entirely inside the JVM — no data leaves the process. Also provides a dense
+        local-model embedding engine for semantic tool selection.
+    </description>
+    <url>https://github.com/argonizer/PrOOPt</url>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.argonizer</groupId>
+            <artifactId>prooopt-core</artifactId>
+        </dependency>
+
+        <!-- JLama: pure-Java local inference engine. -->
+        <dependency>
+            <groupId>com.github.tjake</groupId>
+            <artifactId>jlama-core</artifactId>
+        </dependency>
+        <!-- Optional native SIMD acceleration; the pure-Java Vector API path works without it. -->
+        <dependency>
+            <groupId>com.github.tjake</groupId>
+            <artifactId>jlama-native</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <parameters>true</parameters>
+                    <!-- JLama uses the Vector API (an incubator module). -->
+                    <compilerArgs>
+                        <arg>--add-modules</arg>
+                        <arg>jdk.incubator.vector</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Required at runtime for JLama's Vector API code paths. -->
+                    <argLine>--add-modules jdk.incubator.vector --enable-native-access=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
