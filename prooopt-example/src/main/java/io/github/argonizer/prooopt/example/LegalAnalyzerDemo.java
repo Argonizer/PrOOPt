@@ -38,9 +38,13 @@ public final class LegalAnalyzerDemo {
                 .registerInstance(analyzer)
                 .build();
 
-        System.out.println("=== Two-phase orchestration ===");
+        System.out.println("=== Two-phase orchestration (cold: discovery + planning) ===");
         Object summary = prooopt.orchestrate(analyzer, CONTRACT);
         System.out.println("Summary: " + summary);
+
+        System.out.println("\n=== Same input again (STATIC plan cache warm hit) ===");
+        Object cachedSummary = prooopt.orchestrate(analyzer, CONTRACT);
+        System.out.println("Summary (from cached plan): " + cachedSummary);
 
         System.out.println("\n=== Fluent PromptStream ===");
         LegalAnalyzer proxied = prooopt.proxy(analyzer);

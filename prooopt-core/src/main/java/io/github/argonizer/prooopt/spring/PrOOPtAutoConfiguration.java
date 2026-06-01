@@ -117,9 +117,10 @@ public class PrOOPtAutoConfiguration {
     @Bean
     public TwoPhaseOrchestrator twoPhaseOrchestrator(ModelRouter router, PrOOPtAutoBoxer autoBoxer,
                                                      ToolIndexer indexer, PlanExecutor executor,
-                                                     AuditLogger audit, PrOOPtProperties properties) {
+                                                     AuditLogger audit, PrOOPtProperties properties,
+                                                     EmbeddingEngine embeddingEngine) {
         return new TwoPhaseOrchestrator(router, autoBoxer, indexer, executor, audit,
-                properties.getOrchestration());
+                properties.getOrchestration(), embeddingEngine);
     }
 
     /**

@@ -34,4 +34,9 @@ public record ExecutionStep(
         args = args == null ? Map.of() : args;
         dependsOn = dependsOn == null ? List.of() : List.copyOf(dependsOn);
     }
+
+    /** Returns a copy of this step with its {@code args} replaced (used by {@code PlanInstantiator}). */
+    public ExecutionStep withArgs(Map<String, Object> newArgs) {
+        return new ExecutionStep(stepId, function, type, model, newArgs, dependsOn, assignTo);
+    }
 }

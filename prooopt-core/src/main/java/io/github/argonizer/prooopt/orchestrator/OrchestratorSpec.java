@@ -9,23 +9,42 @@
 package io.github.argonizer.prooopt.orchestrator;
 
 import io.github.argonizer.prooopt.annotation.PromptOrchestrator;
+import io.github.argonizer.prooopt.model.ModelTier;
+import io.github.argonizer.prooopt.model.PlanCacheStrategy;
+import io.github.argonizer.prooopt.model.PlanMode;
 
 /**
- * The runtime view of a {@code @PromptOrchestrator}: its system prompt and execution preferences,
- * plus the optional {@link BaseOrchestrator} instance whose lifecycle hooks should fire. Decouples the
- * orchestration engine from the annotation so it can also be driven programmatically or in tests.
+ * The runtime view of a {@code @PromptOrchestrator}: its system prompt, execution preferences, dynamic
+ * function policy, and plan-cache settings, plus the optional {@link BaseOrchestrator} whose lifecycle
+ * hooks should fire. Decouples the orchestration engine from the annotation so it can also be driven
+ * programmatically or in tests.
  */
-public record OrchestratorSpec(String systemPrompt, boolean parallel, int maxThreads,
-                               BaseOrchestrator hooks) {
+public record OrchestratorSpec(
+        String systemPrompt,
+        boolean parallel,
+        int maxThreads,
+        BaseOrchestrator hooks,
+        boolean allowDynamic,
+        int maxDynamicFunctions,
+        ModelTier dynamicFunctionModel,
+        PlanMode planMode,
+        PlanCacheStrategy planCacheStrategy,
+        long planCacheTtl,
+        int planCacheSize,
+        double planCacheSimilarityThreshold) {
 
     /** Builds a spec from an annotation and (optionally) the orchestrator bean providing hooks. */
     public static OrchestratorSpec from(PromptOrchestrator annotation, BaseOrchestrator hooks) {
-        return new OrchestratorSpec(annotation.prompt(), annotation.parallel(),
-                annotation.maxThreads(), hooks);
+        return new OrchestratorSpec(annotation.prompt(), annotation.parallel(), annotation.maxThreads(),
+                hooks, annotation.allowDynamic(), annotation.maxDynamicFunctions(),
+                annotation.dynamicFunctionModel(), annotation.planMode(), annotation.planCacheStrategy(),
+                annotation.planCacheTtl(), annotation.planCacheSize(),
+                annotation.planCacheSimilarityThreshold());
     }
 
-    /** A minimal spec with just a system prompt, sequential execution, and no hooks. */
+    /** A minimal spec with just a system prompt: sequential, STATIC plan mode, no dynamic functions. */
     public static OrchestratorSpec of(String systemPrompt) {
-        return new OrchestratorSpec(systemPrompt, false, -1, null);
+        return new OrchestratorSpec(systemPrompt, false, -1, null, false, 3, ModelTier.CLOUD_FAST,
+                PlanMode.STATIC, PlanCacheStrategy.SEMANTIC, 3600, 500, 0.85);
     }
 }
