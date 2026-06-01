@@ -1,0 +1,34 @@
+prooopt:
+  models:
+    local:
+      # On-device inference via JLama — nothing leaves the JVM.
+      # interpretSolution and explainMethod run here.
+      modelPath: ${JLAMA_MODEL_PATH:/models/default}
+      threads: 4
+      warmUp: false
+
+    cloud:
+      # CLOUD_ADVANCED: flagship model for orchestration planning.
+      # The system prompt and plan-generation call use this tier.
+      apiKey: ${PROOOPT_ANTHROPIC_API_KEY}
+      provider: anthropic
+      model: claude-opus-4-8
+      temperature: 0.2        # Low temperature: planning and math require determinism
+      maxTokens: 2048
+      timeoutSeconds: 60
+
+  orchestrator:
+    planMode: DYNAMIC          # Fresh plan per invocation (input is unique each call)
+    planCache:
+      strategy: EXACT
+      ttlSeconds: -1           # No caching — planMode DYNAMIC bypasses the cache anyway
+      maxSize: 0
+
+  audit:
+    enabled: true
+    loggerName: io.github.argonizer.prooopt.audit
+    asyncBufferSize: 4096
+
+  threadPool:
+    cloudVirtualThreads: true  # Virtual threads for blocking cloud I/O
+    localPlatformThreads: 4    # Bounded pool for CPU-bound LOCAL inference
