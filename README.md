@@ -125,9 +125,110 @@ models:
     apiKey: ${ANTHROPIC_API_KEY}
 ```
 
+## Plan modes — STATIC vs DYNAMIC
+
+`@PromptOrchestrator(planMode = ...)` controls whether the execution plan is cached and reused.
+
+| Mode | Cloud plan-generation calls | Best for |
+|---|---|---|
+| `STATIC` (default) | 1 total (first call) | Batch/repetitive workloads — 10,000 loan applications share one plan |
+| `DYNAMIC` | 1 per call | Conversational agents, genuinely varied inputs |
+
+Under `STATIC`, the cached artifact is a **plan template** (`${input}` placeholders retained);
+`PlanInstantiator` binds the live input on each run and assigns a fresh trace id. A warm hit skips
+discovery and planning entirely:
+
+```
+[PROOOPT][PLAN_CACHE][HIT] key='Analyze this loan…' similarity=1.00 → skipping Cloud LLM
+[PROOOPT][ORCHESTRATOR][SUMMARY] trace=… mode=STATIC cached=true plan_generation=0ms cloud_calls=1 …
+```
+
+### Cache strategies (`planCacheStrategy`)
+
+| Strategy | Key | Reuse |
+|---|---|---|
+| `EXACT` | SHA-256 of trimmed input | Byte-identical input only |
+| `SEMANTIC` (default) | Input embedding | Cosine similarity ≥ `planCacheSimilarityThreshold` (0.85) |
+| `INTENT` | LOCAL-model intent label | All inputs of the same intent |
+
+Cache is LRU-bounded (`planCacheSize`, default 500), TTL-expiring (`planCacheTtl`, seconds, `-1` =
+never), and invalidated automatically when a new function is registered. Manual control:
+
+```java
+runtime.clearPlanCache();
+runtime.clearPlanCacheFor("extractSigningDate");
+```
+
+## Dynamic prompt functions
+
+Off by default — pure compile-time governance. Opt in per orchestrator:
+
+```java
+@PromptOrchestrator(prompt = "...", allowDynamic = true,
+        maxDynamicFunctions = 3, dynamicFunctionModel = ModelTier.CLOUD_FAST)
+```
+
+When the matching phase finds no registered tool above the threshold for a capability, PrOOPt asks
+the model to generate a minimal, **session-scoped** prompt function (always returns `String`). It is
+registered in a `ThreadLocal` `DynamicFunctionCache`, discarded at run end, capped by
+`maxDynamicFunctions`, and tagged `[DYNAMIC]` on every audit line:
+
+```
+[PROOOPT][DYNAMIC][GAP_DETECTED]    capability='validate SWIFT code' bestScore=0.21 threshold=0.40
+[PROOOPT][DYNAMIC][GENERATING]      model=CLOUD_FAST remainingBudget=2
+[PROOOPT][DYNAMIC][REGISTERED]  ⚠  name=validateSwiftCode model=LOCAL scope=SESSION
+[PROOOPT][PROMPT_FUNCTION][START]   function=validateSwiftCode [DYNAMIC] model=LOCAL
+```
+
+Plans that reference dynamic functions are never cached (the functions don't survive the run).
+
+## Standalone concurrency
+
+`PrOOPt.builder()` wires everything without Spring. Always `shutdown()` to release resources:
+
+```java
+PrOOPtRuntime prooopt = PrOOPt.builder()
+        .configFrom("application.yaml")
+        .modelRouter(customRouter)
+        .scan(MyFunctions.class)
+        .threadPool(Executors.newFixedThreadPool(4))
+        .build();
+// ...
+prooopt.shutdown();
+```
+
+Propagate the trace id across thread boundaries with `PrOOPtThreadPropagator`:
+
+```java
+executor.submit(PrOOPtThreadPropagator.propagate(() -> prooopt.orchestrate(bean, input)));
+```
+
+| Context | TraceId propagation |
+|---|---|
+| `main()` / single-threaded loop | Automatic |
+| `ExecutorService` / `CompletableFuture` / `ForkJoinPool` | `PrOOPtThreadPropagator.propagate()` |
+| Spring Boot / Spring Batch | Automatic (managed bean) |
+
+## Performance
+
+- **Virtual threads for cloud calls** — `routeAsync()` uses a virtual-thread pool for blocking cloud
+  I/O and a bounded platform pool for CPU-bound LOCAL inference.
+- **Async JLama pre-warming** — `JLamaModelRouter.warmUpAsync()` loads the model on a virtual thread
+  with a trivial warm-up inference so the first real request avoids cold-start cost.
+- **Compiled prompt templates** — `PromptTemplate.compile()` parses `{placeholders}` once; resolution
+  is an `O(n)` join, faster than repeated `String.replace` for 3+ variables.
+- **Metadata caches** — `FunctionRegistry` caches parameter names/types, return types, and compiled
+  templates so interception does zero reflection per call.
+- **Constrained generation** — `SchemaGenerator` derives a JSON Schema (Anthropic/OpenAI structured
+  output) or GBNF grammar (JLama) from the return type, driving autoboxing retries toward zero.
+- **Async audit logging** — the audit appender is wrapped in a 4096-entry async (LMAX Disruptor)
+  buffer; the calling thread never blocks on disk I/O.
+- **Embedding LRU cache** — `embed()` results are memoised (2,000 entries), cleared on re-fit.
+
 ## Roadmap
 
 - Streaming token output via `PromptStream.stream()`
 - Encrypted credential store (AES-GCM, JAR-bundled)
 - ONNX runtime for local inference as an alternative to JLama
+- AspectJ compile-time weaving (`prooopt-agent`) for zero-overhead AOP
 - Maven Central publication (`io.github.argonizer:prooopt-core`)

@@ -8,10 +8,12 @@
  */
 package io.github.argonizer.prooopt.audit;
 
+import io.github.argonizer.prooopt.dynamic.DynamicPromptFunction;
 import io.github.argonizer.prooopt.model.FunctionCall;
 import io.github.argonizer.prooopt.model.FunctionType;
 import io.github.argonizer.prooopt.model.LogLevel;
 import io.github.argonizer.prooopt.model.ModelTier;
+import io.github.argonizer.prooopt.model.PlanCacheStrategy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -112,6 +114,76 @@ public class AuditLogger {
         log.info("[PROOOPT][ORCHESTRATOR][SUMMARY] trace={} total={}ms functions={} code={} local={} "
                         + "cloud={} tokens={} est_cost=${}",
                 traceId, totalMs, functions, code, local, cloud, tokens, String.format("%.4f", estCost));
+    }
+
+    /** Rich summary with plan-mode, caching, timing breakdown, and the headline {@code cloud_calls}. */
+    public void orchestratorSummary(RunMetrics m) {
+        log.info("[PROOOPT][ORCHESTRATOR][SUMMARY] trace={} mode={} cached={} total={}ms "
+                        + "plan_generation={}ms local_inference={}ms cloud_inference={}ms code_functions={}ms "
+                        + "overhead={}ms functions_called={} code_calls={} local_calls={} cloud_calls={} "
+                        + "dynamic_generated={} tokens_used={} est_cost_usd=${}",
+                m.traceId(), m.mode(), m.cached(), m.totalMs(), m.planGenerationMs(), m.localInferenceMs(),
+                m.cloudInferenceMs(), m.codeFunctionsMs(), m.overheadMs(), m.functionsCalled(),
+                m.codeCalls(), m.localCalls(), m.cloudCalls(), m.dynamicGenerated(), m.tokensUsed(),
+                String.format("%.4f", m.estCostUsd()));
+    }
+
+    // ------------------------------------------------------------------ plan cache
+
+    public void planCacheMiss(PlanCacheStrategy strategy) {
+        log.info("[PROOOPT][PLAN_CACHE][MISS] strategy={}", strategy);
+    }
+
+    public void planCacheStored(int steps, long ttlSeconds) {
+        log.info("[PROOOPT][PLAN_CACHE][STORED] steps={} ttl={}s", steps, ttlSeconds);
+    }
+
+    public void planCacheHit(String key, double similarity) {
+        log.info("[PROOOPT][PLAN_CACHE][HIT] key='{}' similarity={} → skipping Cloud LLM",
+                key, String.format("%.2f", similarity));
+    }
+
+    public void planCacheInvalidated(int cleared, String reason) {
+        log.info("[PROOOPT][PLAN_CACHE][INVALIDATED] cleared={} entries reason={}", cleared, reason);
+    }
+
+    // ------------------------------------------------------------------ dynamic prompt functions
+
+    public void dynamicGapDetected(String traceId, String capability, double bestScore, double threshold) {
+        log.warn("[PROOOPT][DYNAMIC][GAP_DETECTED] trace={} capability='{}' bestScore={} threshold={}",
+                traceId, truncate(capability), String.format("%.2f", bestScore),
+                String.format("%.2f", threshold));
+    }
+
+    public void dynamicGenerating(String traceId, ModelTier model, int remainingBudget) {
+        log.info("[PROOOPT][DYNAMIC][GENERATING] trace={} model={} remainingBudget={}",
+                traceId, model, remainingBudget);
+    }
+
+    public void dynamicRegistered(DynamicPromptFunction fn) {
+        log.warn("[PROOOPT][DYNAMIC][REGISTERED]  ⚠  trace={} name={} prompt='{}' model={} scope=SESSION",
+                fn.traceId(), fn.name(), truncate(fn.prompt()), fn.model());
+    }
+
+    public void dynamicBudgetExceeded(String traceId, int max, String capability) {
+        log.warn("[PROOOPT][DYNAMIC][BUDGET_EXCEEDED] trace={} max={} reached capability='{}' skipped",
+                traceId, max, truncate(capability));
+    }
+
+    public void dynamicGapSkipped(String traceId, String capability) {
+        log.warn("[PROOOPT][DYNAMIC][GAP_SKIPPED] trace={} capability='{}' (allowDynamic=false)",
+                traceId, truncate(capability));
+    }
+
+    public void dynamicPromptStart(String traceId, String function, ModelTier model) {
+        log.info("[PROOOPT][PROMPT_FUNCTION][START] trace={} function={} [DYNAMIC] model={}",
+                traceId, function, model);
+    }
+
+    public void dynamicPromptEnd(String traceId, String function, ModelTier model, long durationMs,
+                                 Object output) {
+        log.info("[PROOOPT][PROMPT_FUNCTION][END]   trace={} function={} [DYNAMIC] model={} duration={}ms "
+                + "output={}", traceId, function, model, durationMs, truncate(output));
     }
 
     // ------------------------------------------------------------------ helpers

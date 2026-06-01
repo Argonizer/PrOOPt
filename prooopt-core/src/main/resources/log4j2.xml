@@ -30,12 +30,18 @@
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
+
+        <!-- The calling thread enqueues the log event and returns immediately; disk I/O never blocks
+             orchestration. Backed by an LMAX Disruptor ring buffer. -->
+        <Async name="AsyncPrOOPtAudit" bufferSize="4096">
+            <AppenderRef ref="PrOOPtAudit"/>
+        </Async>
     </Appenders>
 
     <Loggers>
-        <!-- The audit trail: its own appender, never mixed into application logs (additivity=false). -->
+        <!-- The audit trail: its own (async) appender, never mixed into application logs. -->
         <Logger name="io.github.argonizer.prooopt.audit" level="INFO" additivity="false">
-            <AppenderRef ref="PrOOPtAudit"/>
+            <AppenderRef ref="AsyncPrOOPtAudit"/>
             <AppenderRef ref="Console"/>
         </Logger>
 

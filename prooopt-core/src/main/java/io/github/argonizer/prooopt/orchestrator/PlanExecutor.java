@@ -13,6 +13,8 @@ import io.github.argonizer.prooopt.annotation.PromptFunction;
 import io.github.argonizer.prooopt.audit.AuditLogger;
 import io.github.argonizer.prooopt.audit.Redaction;
 import io.github.argonizer.prooopt.context.PrOOPtContext;
+import io.github.argonizer.prooopt.dynamic.DynamicFunctionCache;
+import io.github.argonizer.prooopt.dynamic.DynamicPromptFunction;
 import io.github.argonizer.prooopt.exception.PrOOPtExecutionException;
 import io.github.argonizer.prooopt.invoke.PromptCallEngine;
 import io.github.argonizer.prooopt.model.ExecutionPlan;
@@ -30,6 +32,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
@@ -179,6 +182,12 @@ public class PlanExecutor {
 
         ToolDescriptor descriptor = registry.get(step.function());
         if (descriptor == null) {
+            // No static tool — it may be a session-scoped dynamic prompt function.
+            Optional<DynamicPromptFunction> dynamic = DynamicFunctionCache.find(step.function());
+            if (dynamic.isPresent()) {
+                runDynamicStep(step, dynamic.get(), resolvedArgs, context, hooks);
+                return;
+            }
             throw new PrOOPtExecutionException(step.stepId(), step.function(),
                     "no such registered function", null);
         }
@@ -226,6 +235,43 @@ public class PlanExecutor {
             } else {
                 audit.codeError(call, t, LogLevel.FULL);
             }
+            if (hooks != null) {
+                hooks.onError(call, t);
+            }
+            throw (t instanceof PrOOPtExecutionException pee)
+                    ? pee
+                    : new PrOOPtExecutionException(step.stepId(), step.function(), t.getMessage(), t);
+        }
+    }
+
+    /** Executes a session-scoped dynamic prompt function: route the generated prompt, autobox to String. */
+    private void runDynamicStep(ExecutionStep step, DynamicPromptFunction fn,
+                                Map<String, Object> resolvedArgs, Map<String, Object> context,
+                                BaseOrchestrator hooks) {
+        String traceId = PrOOPtContext.getTraceId();
+        long start = System.currentTimeMillis();
+        FunctionCall call = new FunctionCall(fn.name(), fn.description(), FunctionType.PROMPT,
+                fn.model(), null, resolvedArgs.values().toArray(), resolvedArgs, traceId, start);
+        if (hooks != null) {
+            hooks.beforeFunction(call);
+        }
+        try {
+            audit.dynamicPromptStart(traceId, fn.name(), fn.model());
+            Object result = promptEngine.call(fn.prompt(), fn.model(), 0, 0L,
+                    fn.returnType(), resolvedArgs);
+            PrOOPtContext.incrementFunctionCount();
+            audit.dynamicPromptEnd(traceId, fn.name(), fn.model(),
+                    System.currentTimeMillis() - start, result);
+
+            String key = canonical(step.assignTo());
+            if (key != null && result != null) {
+                context.put(key, result);
+            }
+            if (hooks != null) {
+                hooks.afterFunction(call, result);
+            }
+        } catch (Throwable t) {
+            audit.promptError(call, t, LogLevel.FULL);
             if (hooks != null) {
                 hooks.onError(call, t);
             }

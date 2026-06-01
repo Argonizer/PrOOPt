@@ -19,6 +19,7 @@ import io.github.argonizer.prooopt.router.AbstractModelRouter;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -29,10 +30,37 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class JLamaModelRouter extends AbstractModelRouter {
 
-    private final ConcurrentHashMap<String, AbstractModel> models = new ConcurrentHashMap<>();
+    /** Async, de-duplicated model loads keyed by model path; each loads on a virtual thread. */
+    private final ConcurrentHashMap<String, CompletableFuture<AbstractModel>> loads =
+            new ConcurrentHashMap<>();
 
     public JLamaModelRouter(PrOOPtProperties properties) {
         super(properties);
+    }
+
+    /**
+     * Begins loading the configured LOCAL model on a virtual thread (with a trivial warm-up
+     * inference) so the first real request does not pay the full cold-start cost. Safe to call at
+     * runtime build time; returns immediately. Idempotent per model path.
+     */
+    public void warmUpAsync() {
+        ModelConfig local = properties.forTier(ModelTier.LOCAL);
+        if (local != null && local.getModelPath() != null && !local.getModelPath().isBlank()) {
+            loadFuture(local.getModelPath());
+        }
+    }
+
+    private CompletableFuture<AbstractModel> loadFuture(String path) {
+        return loads.computeIfAbsent(path, p -> CompletableFuture.supplyAsync(() -> {
+            AbstractModel model = JLamaModels.loadGenerative(p);
+            try {
+                // Trivial warm-up call so weights and buffers are resident before real traffic.
+                model.generate(UUID.randomUUID(), PromptContext.of("."), 0.0f, 1, (t, time) -> { });
+            } catch (RuntimeException ignored) {
+                // A failed warm-up is non-fatal; the next real call will surface any genuine error.
+            }
+            return model;
+        }, runnable -> Thread.ofVirtual().name("prooopt-jlama-load").unstarted(runnable)));
     }
 
     @Override
@@ -45,8 +73,7 @@ public class JLamaModelRouter extends AbstractModelRouter {
         if (config.getModelPath() == null || config.getModelPath().isBlank()) {
             throw new PrOOPtConfigException("LOCAL tier requires prooopt.models.local.model-path");
         }
-        AbstractModel model = models.computeIfAbsent(config.getModelPath(),
-                path -> JLamaModels.loadGenerative(path));
+        AbstractModel model = loadFuture(config.getModelPath()).join();
 
         PromptContext context = PromptContext.of(applyThinking(config, prompt));
         Generator.Response response = model.generate(
