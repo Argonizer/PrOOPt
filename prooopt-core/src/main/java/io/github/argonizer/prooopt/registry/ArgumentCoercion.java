@@ -8,8 +8,11 @@
  */
 package io.github.argonizer.prooopt.registry;
 
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Coerces loosely-typed argument values — JSON literals from an execution plan, or upstream step
@@ -55,8 +58,53 @@ public final class ArgumentCoercion {
         if (target.isEnum()) {
             return Enum.valueOf((Class<? extends Enum>) target, String.valueOf(value).trim().toUpperCase());
         }
+        if (target.isArray()) {
+            return toArray(value, target.getComponentType());
+        }
         // Best effort: hand the value through and let the call fail loudly if truly incompatible.
         return value;
+    }
+
+    /**
+     * Coerces a {@code List}, an existing array, or a JSON-ish bracketed string (e.g.
+     * {@code "[1.0, 2.0, 3.0]"}) into an array of {@code componentType}, recursively coercing each
+     * element. Lets the same plan drive a deterministic tool whose parameter is {@code double[]},
+     * {@code int[]}, {@code String[]}, etc., regardless of how the planner emitted the value.
+     */
+    private static Object toArray(Object value, Class<?> componentType) {
+        List<Object> elements = new ArrayList<>();
+        if (value instanceof List<?> list) {
+            elements.addAll(list);
+        } else if (value.getClass().isArray()) {
+            int len = Array.getLength(value);
+            for (int i = 0; i < len; i++) {
+                elements.add(Array.get(value, i));
+            }
+        } else {
+            String s = String.valueOf(value).trim();
+            if (s.startsWith("[") && s.endsWith("]")) {
+                s = s.substring(1, s.length() - 1).trim();
+            }
+            if (!s.isEmpty()) {
+                for (String part : s.split("\\s*,\\s*")) {
+                    elements.add(stripQuotes(part));
+                }
+            }
+        }
+        Object array = Array.newInstance(componentType, elements.size());
+        for (int i = 0; i < elements.size(); i++) {
+            Array.set(array, i, coerce(elements.get(i), componentType));
+        }
+        return array;
+    }
+
+    private static String stripQuotes(String s) {
+        String t = s.trim();
+        if (t.length() >= 2 && (t.charAt(0) == '"' || t.charAt(0) == '\'')
+                && t.charAt(t.length() - 1) == t.charAt(0)) {
+            return t.substring(1, t.length() - 1);
+        }
+        return t;
     }
 
     private static boolean isNumeric(Class<?> t) {

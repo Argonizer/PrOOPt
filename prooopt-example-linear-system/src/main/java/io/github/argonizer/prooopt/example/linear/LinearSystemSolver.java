@@ -18,7 +18,10 @@ import io.github.argonizer.prooopt.orchestrator.BaseOrchestrator;
 import io.github.argonizer.prooopt.router.ModelRouter;
 
 /**
- * Autonomous orchestrator that solves the 3×3 linear system:
+ * Autonomous orchestrator that solves an n×n linear system. The dimension is inferred from the
+ * flattened augmented matrix, so the same orchestrator solves a 2×2, 3×3, or larger system unchanged.
+ *
+ * <p>The bundled demo solves the canonical 3×3 system:
  *
  * <pre>
  *   x  +  y  +  z  =  25
@@ -38,7 +41,8 @@ import io.github.argonizer.prooopt.router.ModelRouter;
  *   <tr><th>Zone</th><th>Functions</th><th>Execution</th></tr>
  *   <tr><td>Deterministic</td>
  *       <td>{@code gaussianElimination}, {@code verifySolution}, {@code computeResidual},
- *           {@code formatAsFraction}, {@code formatAugmentedMatrix}, {@code packageResult}</td>
+ *           {@code formatAsFraction}, {@code formatVectorAsFractions}, {@code formatAugmentedMatrix},
+ *           {@code packageResult}</td>
  *       <td>Pure Java — zero tokens, sub-millisecond</td></tr>
  *   <tr><td>Bounded AI</td>
  *       <td>{@code interpretSolution}, {@code explainMethod}</td>
@@ -50,7 +54,8 @@ import io.github.argonizer.prooopt.router.ModelRouter;
  */
 @PromptOrchestrator(
         prompt = "You are a mathematical computation coordinator. Your job is to orchestrate the exact, "
-                + "step-by-step solution of a 3×3 linear system. "
+                + "step-by-step solution of an n×n linear system, where n is inferred from the input "
+                + "augmented matrix. "
                 + "CRITICAL RULE: you must NEVER compute any arithmetic yourself. "
                 + "All matrix operations, Gaussian elimination, back-substitution, verification, "
                 + "residual computation, fraction formatting, and result packaging MUST be delegated "
@@ -60,23 +65,23 @@ import io.github.argonizer.prooopt.router.ModelRouter;
                 + "(1) solve via gaussianElimination, "
                 + "(2) verify via verifySolution, "
                 + "(3) compute residual via computeResidual, "
-                + "(4) format fractions via formatAsFraction for each variable, "
+                + "(4) format the solution vector via formatVectorAsFractions, "
                 + "(5) interpret results via interpretSolution, "
                 + "(6) package the final result via packageResult.",
         model = ModelTier.CLOUD_ADVANCED,
         planMode = PlanMode.DYNAMIC,
         parallel = false,
         name = "linear-system-solver",
-        version = "0.1.0")
+        version = "0.2.0")
 public class LinearSystemSolver extends BaseOrchestrator {
 
     /**
-     * Augmented matrix [A|b] for the system, row-major:
-     * Row 0: 1x + 1y + 1z = 25   → [1, 1, 1, 25]
-     * Row 1: 5x + 3y + 2z =  0   → [5, 3, 2,  0]
-     * Row 2: 0x + 1y − 1z =  6   → [0, 1, −1,  6]
+     * Default demo: augmented matrix [A|b] for the 3×3 system, row-major (length n*(n+1) = 12):
+     * Row 0: 1x + 1y + 1z = 25  → [1, 1, 1, 25]
+     * Row 1: 5x + 3y + 2z =  0  → [5, 3, 2,  0]
+     * Row 2: 0x + 1y − 1z =  6  → [0, 1, −1,  6]
      */
-    static final double[] AUGMENTED_MATRIX = {
+    static final double[] DEMO_3X3 = {
             1, 1,  1, 25,
             5, 3,  2,  0,
             0, 1, -1,  6
@@ -86,7 +91,7 @@ public class LinearSystemSolver extends BaseOrchestrator {
 
     @Override
     protected void onRunStart(String traceId, Object input) {
-        audit.info("[LINEAR-SOLVER][START] trace={} augmented-matrix=12-elements", traceId);
+        audit.info("[LINEAR-SOLVER][START] trace={} input={}", traceId, input);
     }
 
     @Override
@@ -118,12 +123,11 @@ public class LinearSystemSolver extends BaseOrchestrator {
     // ---- Entry point ----
 
     public static void main(String[] args) {
-        LinearSystemFunctions functions = new LinearSystemFunctions();
+        // Pick the system to solve: command-line override or the bundled 3×3 demo.
+        double[] augmented = args.length > 0 ? parseMatrix(args[0]) : DEMO_3X3;
+        int n = LinearSystemFunctions.dimensionOf(augmented);
 
-        /*
-         * MockRouter: answers planning and discovery prompts with canned responses.
-         * Swap for a real CloudModelRouter + AnthropicAdapter to use the live API.
-         */
+        LinearSystemFunctions functions = new LinearSystemFunctions();
         ModelRouter mockRouter = new MockLinearRouter();
 
         LinearSystemSolver solver = new LinearSystemSolver();
@@ -136,39 +140,37 @@ public class LinearSystemSolver extends BaseOrchestrator {
                 .build();
 
         try {
-            System.out.println("=== PrOOPt Linear System Solver ===");
-            System.out.println("System:");
-            System.out.println("  x  +  y  +  z  = 25");
-            System.out.println("  5x + 3y + 2z  =  0");
-            System.out.println("       y  −  z  =  6");
-            System.out.println();
-            System.out.println("Augmented matrix:");
-            System.out.print(LinearSystemFunctions.formatAugmentedMatrix(AUGMENTED_MATRIX));
+            System.out.printf("=== PrOOPt Linear System Solver (%d×%d) ===%n", n, n);
+            System.out.println("Augmented matrix [A|b]:");
+            System.out.print(LinearSystemFunctions.formatAugmentedMatrix(augmented));
             System.out.println();
 
-            Object rawResult = runtime.orchestrate(solver, serializeMatrix(AUGMENTED_MATRIX));
+            Object rawResult = runtime.orchestrate(solver, serializeMatrix(augmented));
 
             LinearSystemResult result = (rawResult instanceof LinearSystemResult r)
                     ? r
-                    : parseResult(rawResult);
+                    : fallbackSolve(augmented);
 
-            System.out.printf("Solution:%n");
-            System.out.printf("  x = %s = %.1f%n", result.getXFraction(), result.getX());
-            System.out.printf("  y = %s = %.1f%n", result.getYFraction(), result.getY());
-            System.out.printf("  z = %s = %.1f%n", result.getZFraction(), result.getZ());
+            System.out.println("Solution:");
+            for (int i = 0; i < result.getN(); i++) {
+                System.out.printf("  %s = %s = %.4f%n",
+                        LinearSystemFunctions.varName(i), result.fraction(i), result.value(i));
+            }
             System.out.printf("Verified: %s%n", result.isVerified());
             System.out.printf("%nInterpretation:%n%s%n", result.getInterpretation());
 
-            // Hard assertion — x must be negative
-            if (result.getX() >= 0) {
-                throw new AssertionError("Expected x < 0 (x = −131/5 = −26.2), got " + result.getX());
+            // Hard assertions for the bundled 3×3 demo only.
+            if (augmented == DEMO_3X3) {
+                if (result.value(0) >= 0) {
+                    throw new AssertionError(
+                            "Expected x < 0 (x = −131/5 = −26.2), got " + result.value(0));
+                }
+                double eps = 1e-6;
+                assertClose("x", result.value(0), -131.0 / 5.0, eps);
+                assertClose("y", result.value(1),  143.0 / 5.0, eps);
+                assertClose("z", result.value(2),  113.0 / 5.0, eps);
+                System.out.println("\nAll assertions passed.");
             }
-            double eps = 1e-6;
-            assertClose("x", result.getX(), -131.0 / 5.0, eps);
-            assertClose("y", result.getY(),  143.0 / 5.0, eps);
-            assertClose("z", result.getZ(),  113.0 / 5.0, eps);
-
-            System.out.println("\nAll assertions passed.");
         } finally {
             runtime.shutdown();
         }
@@ -176,7 +178,8 @@ public class LinearSystemSolver extends BaseOrchestrator {
 
     // ---- Helpers ----
 
-    private static String serializeMatrix(double[] m) {
+    /** Serializes a matrix to a compact JSON array literal for the orchestrator input. */
+    static String serializeMatrix(double[] m) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < m.length; i++) {
             if (i > 0) sb.append(',');
@@ -186,11 +189,24 @@ public class LinearSystemSolver extends BaseOrchestrator {
         return sb.toString();
     }
 
-    private static LinearSystemResult parseResult(Object raw) {
-        if (raw instanceof LinearSystemResult r) return r;
-        // Fallback: build from known solution when running with mock router
-        double[] solution = LinearSystemFunctions.gaussianElimination(AUGMENTED_MATRIX);
-        boolean verified = LinearSystemFunctions.verifySolution(AUGMENTED_MATRIX, solution);
+    /** Parses a "[a,b,c,...]" or "a,b,c,..." literal into a double array. */
+    static double[] parseMatrix(String literal) {
+        String body = literal.trim().replaceAll("^\\[|\\]$", "").trim();
+        if (body.isEmpty()) {
+            return new double[0];
+        }
+        String[] parts = body.split("\\s*,\\s*");
+        double[] m = new double[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            m[i] = Double.parseDouble(parts[i]);
+        }
+        return m;
+    }
+
+    /** Deterministic fallback used when running against the mock router. */
+    private static LinearSystemResult fallbackSolve(double[] augmented) {
+        double[] solution = LinearSystemFunctions.gaussianElimination(augmented);
+        boolean verified = LinearSystemFunctions.verifySolution(augmented, solution);
         return LinearSystemFunctions.packageResult(solution, verified,
                 "Solution computed by Gaussian elimination with partial pivoting.");
     }

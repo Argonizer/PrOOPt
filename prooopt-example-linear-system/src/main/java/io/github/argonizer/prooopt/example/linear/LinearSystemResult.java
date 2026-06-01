@@ -11,62 +11,65 @@ package io.github.argonizer.prooopt.example.linear;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Arrays;
+
 /**
- * The solution to the 3×3 linear system together with human-readable fraction representations.
+ * The solution to an n×n linear system together with human-readable fraction representations.
  *
- * <p>Exact solution:
+ * <p>For the canonical 3×3 demo system:
  * <ul>
- *   <li>x = −131/5 = −26.2</li>
- *   <li>y =  143/5 = 28.6</li>
- *   <li>z =  113/5 = 22.6</li>
+ *   <li>x₀ = −131/5 = −26.2</li>
+ *   <li>x₁ =  143/5 = 28.6</li>
+ *   <li>x₂ =  113/5 = 22.6</li>
  * </ul>
  *
  * <p>Jackson-deserializable: PrOOPt's autoboxer will reconstruct this from the model's JSON output.
+ * The {@code values} and {@code fractions} arrays are parallel and length {@code n}.
  */
 public final class LinearSystemResult {
 
-    private final double x;
-    private final double y;
-    private final double z;
-    private final String xFraction;
-    private final String yFraction;
-    private final String zFraction;
+    private final int n;
+    private final double[] values;
+    private final String[] fractions;
     private final String interpretation;
     private final boolean verified;
 
     @JsonCreator
     public LinearSystemResult(
-            @JsonProperty("x") double x,
-            @JsonProperty("y") double y,
-            @JsonProperty("z") double z,
-            @JsonProperty("xFraction") String xFraction,
-            @JsonProperty("yFraction") String yFraction,
-            @JsonProperty("zFraction") String zFraction,
+            @JsonProperty("n") int n,
+            @JsonProperty("values") double[] values,
+            @JsonProperty("fractions") String[] fractions,
             @JsonProperty("interpretation") String interpretation,
             @JsonProperty("verified") boolean verified) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.xFraction = xFraction;
-        this.yFraction = yFraction;
-        this.zFraction = zFraction;
+        this.n = n;
+        this.values = values != null ? values.clone() : new double[0];
+        this.fractions = fractions != null ? fractions.clone() : new String[0];
         this.interpretation = interpretation;
         this.verified = verified;
     }
 
-    public double getX() { return x; }
-    public double getY() { return y; }
-    public double getZ() { return z; }
-    public String getXFraction() { return xFraction; }
-    public String getYFraction() { return yFraction; }
-    public String getZFraction() { return zFraction; }
+    public int getN() { return n; }
+    public double[] getValues() { return values.clone(); }
+    public String[] getFractions() { return fractions.clone(); }
     public String getInterpretation() { return interpretation; }
     public boolean isVerified() { return verified; }
 
+    /** Value of the i-th variable (0-indexed). */
+    public double value(int i) { return values[i]; }
+
+    /** Fraction string of the i-th variable (0-indexed). */
+    public String fraction(int i) { return fractions[i]; }
+
     @Override
     public String toString() {
-        return String.format(
-                "LinearSystemResult{x=%s (%s), y=%s (%s), z=%s (%s), verified=%s, interpretation='%s'}",
-                x, xFraction, y, yFraction, z, zFraction, verified, interpretation);
+        StringBuilder sb = new StringBuilder("LinearSystemResult{n=").append(n).append(", ");
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append('x').append(i).append('=').append(values[i])
+              .append(" (").append(i < fractions.length ? fractions[i] : "?").append(')');
+        }
+        sb.append(", verified=").append(verified)
+          .append(", interpretation='").append(interpretation).append("'}");
+        return sb.toString();
     }
 }

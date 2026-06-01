@@ -1,9 +1,14 @@
 # PrOOPt Example — Linear System Solver
 
-Solves a 3×3 linear system of equations end-to-end using PrOOPt's three-zone control model.
+Solves an **n×n** linear system of equations end-to-end using PrOOPt's three-zone control model.
 All arithmetic is deterministic Java; language models contribute only prose interpretation.
 
-## The problem
+The dimension `n` is **inferred from the input** — a flattened augmented matrix `[A|b]` of length
+`n*(n+1)` (n rows × n+1 columns, row-major). The same code solves a 2×2, 3×3, or 100×100 system
+unchanged. The bundled demo solves the canonical 3×3 system below; pass your own matrix as a
+command-line argument to solve any other.
+
+## The demo problem (3×3)
 
 ```
 x  +  y  +  z  =  25
@@ -28,7 +33,7 @@ Verification: (−26.2) + 28.6 + 22.6 = 25 ✓ | 5(−26.2) + 3(28.6) + 2(22.6) 
 
 | Zone | Functions | Execution | Tokens |
 |------|-----------|-----------|--------|
-| **Deterministic** | `gaussianElimination`, `verifySolution`, `computeResidual`, `formatAsFraction`, `formatAugmentedMatrix`, `packageResult` | Pure Java — JVM enforced | 0 |
+| **Deterministic** | `gaussianElimination`, `verifySolution`, `computeResidual`, `formatAsFraction`, `formatVectorAsFractions`, `summarizeSolution`, `formatAugmentedMatrix`, `packageResult` | Pure Java — JVM enforced | 0 |
 | **Bounded AI** | `interpretSolution`, `explainMethod` | On-device JLama (LOCAL) — nothing leaves the JVM | Minimal |
 | **Elevated AI** | Orchestration planning only | CLOUD_ADVANCED (temperature 0.2) | Plan JSON only |
 
@@ -37,14 +42,25 @@ LLMs **never** compute arithmetic. The planner only decides *which* tools to cal
 ## Running the demo
 
 ```bash
-# No API key needed — uses MockLinearRouter
+# No API key needed — uses MockLinearRouter, solves the bundled 3×3 demo
 mvn -pl prooopt-example-linear-system exec:java
+
+# Solve any n×n system — pass a flattened augmented matrix [A|b] of length n*(n+1).
+# Example: 2x + y = 5, x − y = 1  →  [2,1,5, 1,-1,1]  →  x=2, y=1
+mvn -pl prooopt-example-linear-system exec:java -Dexec.args="[2,1,5,1,-1,1]"
+
+# Example 4×4 (rows of 5 numbers each):
+mvn -pl prooopt-example-linear-system exec:java \
+    -Dexec.args="[1,1,1,1,10, 0,1,0,0,2, 0,0,1,0,3, 0,0,0,1,4]"
 
 # With a real Anthropic API key
 export PROOOPT_ANTHROPIC_API_KEY=sk-ant-...
-mvn -pl prooopt-example-linear-system exec:java \
-    -Dexec.mainClass=io.github.argonizer.prooopt.example.linear.LinearSystemSolver
+mvn -pl prooopt-example-linear-system exec:java
 ```
+
+The input layout is row-major: for an n×n system, supply n rows of (n+1) numbers — the n
+coefficients followed by the right-hand-side value. The solver derives n from the array length
+(`n*(n+1)`) and rejects any length that is not of that form.
 
 ## Sample output
 
@@ -91,7 +107,7 @@ prooopt-example-linear-system/
 └── src/main/
     ├── java/io/github/argonizer/prooopt/example/linear/
     │   ├── LinearSystemResult.java   – Jackson-deserializable POJO for the solution
-    │   ├── LinearSystemFunctions.java – @CodeFunction (6) + @PromptFunction (2)
+    │   ├── LinearSystemFunctions.java – @CodeFunction (8, n-dimensional) + @PromptFunction (2)
     │   ├── LinearSystemSolver.java   – @PromptOrchestrator + main()
     │   └── MockLinearRouter.java     – Deterministic router for offline demo
     └── resources/

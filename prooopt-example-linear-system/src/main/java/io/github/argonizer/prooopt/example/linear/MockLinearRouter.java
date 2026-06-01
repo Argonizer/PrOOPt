@@ -15,12 +15,11 @@ import io.github.argonizer.prooopt.router.ModelRouter;
  * Deterministic mock router for the linear-system solver demo. No API key or network required.
  *
  * <p>Returns canned discovery and planning responses so the full orchestration pipeline runs without
- * a live model. Swap for a real {@code CloudModelRouter} to use the Anthropic or OpenAI API.
+ * a live model. The plan is dimension-agnostic: it forwards the orchestrator's input (the augmented
+ * matrix) straight into the {@code @CodeFunction} steps, so the same plan works for any n×n system.
+ * Swap for a real {@code CloudModelRouter} to use the Anthropic or OpenAI API.
  */
 public final class MockLinearRouter implements ModelRouter {
-
-    private static final String AUGMENTED_ARG =
-            "[1.0,1.0,1.0,25.0,5.0,3.0,2.0,0.0,0.0,1.0,-1.0,6.0]";
 
     @Override
     public String route(String prompt, ModelTier tier) {
@@ -28,48 +27,47 @@ public final class MockLinearRouter implements ModelRouter {
         // Phase 1 – capability discovery
         if (prompt.contains("planning assistant")) {
             return """
-                    ["solve 3x3 linear system","verify solution","compute residual",
-                     "format as fraction","interpret solution","explain method","package result"]
+                    ["solve nxn linear system","verify solution","compute residual",
+                     "format vector as fractions","interpret solution","explain method","package result"]
                     """;
         }
 
-        // Phase 2 – execution plan
+        // Phase 2 – execution plan (dimension-agnostic: ${userInput} is the augmented matrix)
         if (prompt.contains("Produce an execution plan")) {
-            String aug = AUGMENTED_ARG;
             return "{\"traceId\":\"linear-1\",\"steps\":["
                     + "{\"stepId\":1,\"function\":\"gaussianElimination\",\"type\":\"CODE\","
-                    + "\"args\":{\"augmented\":" + aug + "},\"dependsOn\":[],\"assignTo\":\"$sol\"},"
+                    + "\"args\":{\"augmented\":\"${userInput}\"},\"dependsOn\":[],\"assignTo\":\"$sol\"},"
                     + "{\"stepId\":2,\"function\":\"verifySolution\",\"type\":\"CODE\","
-                    + "\"args\":{\"augmented\":" + aug + ",\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$ok\"},"
+                    + "\"args\":{\"augmented\":\"${userInput}\",\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$ok\"},"
                     + "{\"stepId\":3,\"function\":\"computeResidual\",\"type\":\"CODE\","
-                    + "\"args\":{\"augmented\":" + aug + ",\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$res\"},"
-                    + "{\"stepId\":4,\"function\":\"formatAsFraction\",\"type\":\"CODE\","
-                    + "\"args\":{\"value\":-26.2},\"dependsOn\":[1],\"assignTo\":\"$xf\"},"
-                    + "{\"stepId\":5,\"function\":\"interpretSolution\",\"type\":\"PROMPT\",\"model\":\"LOCAL\","
-                    + "\"args\":{\"xFraction\":\"$xf\",\"xDecimal\":\"-26.2\",\"yFraction\":\"143/5\","
-                    + "\"yDecimal\":\"28.6\",\"zFraction\":\"113/5\",\"zDecimal\":\"22.6\",\"verified\":\"$ok\"},"
-                    + "\"dependsOn\":[2,4],\"assignTo\":\"$interp\"},"
-                    + "{\"stepId\":6,\"function\":\"packageResult\",\"type\":\"CODE\","
+                    + "\"args\":{\"augmented\":\"${userInput}\",\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$res\"},"
+                    + "{\"stepId\":4,\"function\":\"formatVectorAsFractions\",\"type\":\"CODE\","
+                    + "\"args\":{\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$fracs\"},"
+                    + "{\"stepId\":5,\"function\":\"summarizeSolution\",\"type\":\"CODE\","
+                    + "\"args\":{\"solution\":\"$sol\",\"fractions\":\"$fracs\"},\"dependsOn\":[1,4],\"assignTo\":\"$summary\"},"
+                    + "{\"stepId\":6,\"function\":\"interpretSolution\",\"type\":\"PROMPT\",\"model\":\"LOCAL\","
+                    + "\"args\":{\"solutionSummary\":\"$summary\",\"verified\":\"$ok\"},"
+                    + "\"dependsOn\":[2,5],\"assignTo\":\"$interp\"},"
+                    + "{\"stepId\":7,\"function\":\"packageResult\",\"type\":\"CODE\","
                     + "\"args\":{\"solution\":\"$sol\",\"verified\":\"$ok\",\"interpretation\":\"$interp\"},"
-                    + "\"dependsOn\":[5],\"assignTo\":\"$out\"}],"
+                    + "\"dependsOn\":[6],\"assignTo\":\"$out\"}],"
                     + "\"output\":\"$out\"}";
         }
 
         // LOCAL model — interpretation prose
         if (prompt.contains("mathematics tutor") || prompt.contains("interpretSolution")
                 || prompt.contains("Interpret")) {
-            return "The system has a unique solution. Notably, x = −131/5 = −26.2 is negative, "
-                    + "which reflects that increasing x simultaneously satisfies the tight sum constraint "
-                    + "(x+y+z=25) while offsetting the dominant coefficient 5x in the second equation. "
-                    + "Values y = 143/5 and z = 113/5 are both positive, with their difference y−z = 6 "
-                    + "confirming the third equation exactly.";
+            return "The system has a unique solution. Where a variable is negative (for this demo "
+                    + "x = −131/5 = −26.2), it reflects that the variable must offset a dominant "
+                    + "coefficient elsewhere to satisfy all constraints simultaneously. The remaining "
+                    + "variables are positive and together satisfy every equation exactly.";
         }
 
         // LOCAL model — method explanation
         if (prompt.contains("mathematics educator") || prompt.contains("Gaussian elimination")) {
             return "Gaussian elimination reduces the augmented matrix to upper-triangular form. "
                     + "Partial pivoting selects the largest absolute value in each column as the pivot "
-                    + "to avoid catastrophic cancellation. Back-substitution then recovers x, y, z.";
+                    + "to avoid catastrophic cancellation. Back-substitution then recovers each variable.";
         }
 
         return "OK";
