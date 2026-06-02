@@ -19,8 +19,10 @@
     <artifactId>prooopt-runtime-local-java17</artifactId>
     <name>PrOOPt Runtime — Local (ONNX, Java 17)</name>
     <description>
-        Java 17-compatible variant of prooopt-runtime-local. Uses platform threads instead of
-        virtual threads for async model loading, making it compatible with Java 17+.
+        Java 17+ compatible variant of prooopt-runtime-local. Identical functionality but uses
+        platform threads instead of virtual threads, making it suitable for Java 17 and Java 21
+        deployments alike. Embedded local LLM inference via ONNX Runtime — zero external processes,
+        inference runs entirely inside the JVM on CPU, no data leaves the process.
     </description>
     <url>https://github.com/argonizer/PrOOPt</url>
 
@@ -94,8 +96,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <!-- Override parent's Java 21 release — this module targets Java 17+
-                         and uses platform threads instead of virtual threads. -->
+                    <!-- Override parent's Java 21 release — this module targets Java 17+. -->
                     <release>17</release>
                     <parameters>true</parameters>
                 </configuration>
