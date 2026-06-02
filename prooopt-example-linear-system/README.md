@@ -34,7 +34,7 @@ Verification: (−26.2) + 28.6 + 22.6 = 25 ✓ | 5(−26.2) + 3(28.6) + 2(22.6) 
 | Zone | Functions | Execution | Tokens |
 |------|-----------|-----------|--------|
 | **Deterministic** | `gaussianElimination`, `verifySolution`, `computeResidual`, `formatAsFraction`, `formatVectorAsFractions`, `summarizeSolution`, `formatAugmentedMatrix`, `packageResult` | Pure Java — JVM enforced | 0 |
-| **Bounded AI** | `interpretSolution`, `explainMethod` | On-device JLama (LOCAL) — nothing leaves the JVM | Minimal |
+| **Bounded AI** | `interpretSolution`, `explainMethod` | On-device ONNX Runtime (LOCAL) — nothing leaves the JVM | Minimal |
 | **Elevated AI** | Orchestration planning only | CLOUD_ADVANCED (temperature 0.2) | Plan JSON only |
 
 LLMs **never** compute arithmetic. The planner only decides *which* tools to call and in what order.

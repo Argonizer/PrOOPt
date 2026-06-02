@@ -12,12 +12,14 @@ prooopt:
 
   models:
 
-    # LOCAL — on-device inference via JLama; nothing leaves the JVM.
+    # LOCAL — on-device inference via ONNX Runtime (Java 17+); nothing leaves the JVM.
+    # Download e.g. microsoft/Phi-3.5-mini-instruct-onnx from HuggingFace.
+    # Files needed: model.onnx, tokenizer.json, generation_config.json.
     local:
-      engine: jlama
-      # modelPath is the directory where the quantised GGUF model was downloaded.
-      # Swap for any JLama-compatible model, e.g. a Llama-3-8B Q4 GGUF.
-      modelPath: ${JLAMA_MODEL_PATH:models/llama3-8b-q4}
+      engine: onnx
+      model-path: ${PROOOPT_LOCAL_MODEL_PATH:models/phi-3.5-mini-onnx/model.onnx}
+      tokenizer-path: ${PROOOPT_LOCAL_TOKENIZER_PATH:models/phi-3.5-mini-onnx/tokenizer.json}
+      generation-config-path: models/phi-3.5-mini-onnx/generation_config.json
       thinking: false
       maxTokens: 512
       temperature: 0.3
@@ -53,7 +55,7 @@ prooopt:
     strategy: semantic
     top-k: 10
     min-similarity: 0.30
-    embedding-engine: tfidf   # "tfidf" (zero-dep) or "local-model" (JLama dense vectors)
+    embedding-engine: tfidf   # "tfidf" (zero-dep) or "local-model" (ONNX dense vectors)
 
   # ── Orchestration (two-phase discovery → planning → execution) ───────────────
 

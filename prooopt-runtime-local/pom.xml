@@ -17,37 +17,77 @@
     </parent>
 
     <artifactId>prooopt-runtime-local</artifactId>
-    <name>PrOOPt Runtime — Local</name>
+    <name>PrOOPt Runtime — Local (ONNX)</name>
     <description>
-        On-device inference for the LOCAL tier via JLama (pure-Java, Vector API). Add this module to
-        run bounded AI entirely inside the JVM — no data leaves the process. Also provides a dense
-        local-model embedding engine for semantic tool selection.
+        Embedded local LLM inference via ONNX Runtime. Zero external processes — inference runs
+        entirely inside the JVM on CPU, no data leaves the process. Works on Java 17+ (no preview
+        or incubator APIs). Default model: Phi-3.5 Mini INT4 (ONNX). Also provides a dense
+        local-model embedding engine for semantic tool selection that reuses the loaded session.
     </description>
     <url>https://github.com/argonizer/PrOOPt</url>
 
+    <properties>
+        <onnxruntime.version>1.20.0</onnxruntime.version>
+        <djl.version>0.31.0</djl.version>
+    </properties>
+
     <dependencies>
+
+        <!-- PrOOPt core — annotations, registry, router interface, embedding interface. -->
         <dependency>
             <groupId>io.github.argonizer</groupId>
             <artifactId>prooopt-core</artifactId>
         </dependency>
 
-        <!-- JLama: pure-Java local inference engine. -->
+        <!-- ONNX Runtime Java — CPU inference engine with bundled native libs. -->
         <dependency>
-            <groupId>com.github.tjake</groupId>
-            <artifactId>jlama-core</artifactId>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>${onnxruntime.version}</version>
         </dependency>
-        <!-- Optional native SIMD acceleration; the pure-Java Vector API path works without it. -->
+
+        <!-- DJL Hugging Face tokenizer — pure-Java BPE/WordPiece tokenizer. -->
         <dependency>
-            <groupId>com.github.tjake</groupId>
-            <artifactId>jlama-native</artifactId>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+            <version>${djl.version}</version>
+        </dependency>
+
+        <!-- Jackson — parse generation_config.json. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Spring Boot autoconfigure — optional, for Spring Boot users. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
             <optional>true</optional>
         </dependency>
 
+        <!-- Log4j2 — audit logging. -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+        </dependency>
+
+        <!-- Test. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -56,23 +96,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <release>${maven.compiler.release}</release>
+                    <!-- Inherits the project Java release. ONNX Runtime needs no preview or
+                         incubator (Vector API) modules, unlike the former JLama runtime. -->
                     <parameters>true</parameters>
-                    <!-- JLama uses the Vector API (an incubator module). -->
-                    <compilerArgs>
-                        <arg>--add-modules</arg>
-                        <arg>jdk.incubator.vector</arg>
-                    </compilerArgs>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <!-- Required at runtime for JLama's Vector API code paths. -->
-                    <argLine>--add-modules jdk.incubator.vector --enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
 </project>

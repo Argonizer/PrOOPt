@@ -1,11 +1,23 @@
 prooopt:
   models:
+    # LOCAL TIER — ONNX Runtime (zero external process, Java 17+)
+    # Download model from HuggingFace:
+    #   microsoft/Phi-3.5-mini-instruct-onnx  (recommended, MIT license)
+    #   Qwen/Qwen2.5-0.5B-Instruct-ONNX      (lighter, ~400MB)
+    #   Qwen/Qwen2.5-1.5B-Instruct-ONNX      (balanced, ~900MB)
+    # Model files needed: model.onnx, tokenizer.json, generation_config.json
     local:
-      # On-device inference via JLama — nothing leaves the JVM.
+      # On-device inference via ONNX Runtime — nothing leaves the JVM.
       # interpretSolution and explainMethod run here.
-      modelPath: ${JLAMA_MODEL_PATH:/models/default}
-      threads: 4
-      warmUp: false
+      engine: onnx
+      model-path: ${PROOOPT_LOCAL_MODEL_PATH:models/phi-3.5-mini-onnx/model.onnx}
+      tokenizer-path: ${PROOOPT_LOCAL_TOKENIZER_PATH:models/phi-3.5-mini-onnx/tokenizer.json}
+      generation-config-path: models/phi-3.5-mini-onnx/generation_config.json
+      thinking: false
+      max-tokens: 1024
+      temperature: 0.7
+      timeout-ms: 30000
+      intra-throughput-threads: 4   # tune to available CPU cores
 
     cloud:
       # CLOUD_ADVANCED: flagship model for orchestration planning.

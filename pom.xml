@@ -59,11 +59,11 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!--
-          The build specification targets Java 25 (LTS). This repository's reference
-          environment ships Java 21 (also LTS), which supports every language feature
-          PrOOPt uses (records, sealed types, pattern matching, switch expressions) and
-          is JLama's own baseline. Bump this single property to 25 where a JDK 25 toolchain
-          is available; nothing else in the build needs to change.
+          PrOOPt targets Java 21 (LTS). The local runtime (ONNX Runtime) works on Java 17+,
+          but the core orchestrator uses virtual threads, so 21 is the project baseline.
+          Every language feature PrOOPt uses — records, sealed types, pattern matching,
+          switch expressions, virtual threads — is available on Java 21. No preview or
+          incubator (Vector API) modules are required.
         -->
         <java.release>21</java.release>
         <maven.compiler.release>${java.release}</maven.compiler.release>
@@ -79,7 +79,6 @@
         <mockito.version>5.20.0</mockito.version>
 
         <!-- Runtime engines. -->
-        <jlama.version>0.8.4</jlama.version>
         <anthropic.version>2.35.0</anthropic.version>
 
         <!-- Plugin versions. -->
@@ -139,18 +138,6 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-autoconfigure</artifactId>
                 <version>${spring-boot.version}</version>
-            </dependency>
-
-            <!-- JLama: pure-Java local inference (Vector API). -->
-            <dependency>
-                <groupId>com.github.tjake</groupId>
-                <artifactId>jlama-core</artifactId>
-                <version>${jlama.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.github.tjake</groupId>
-                <artifactId>jlama-native</artifactId>
-                <version>${jlama.version}</version>
             </dependency>
 
             <!-- Anthropic cloud SDK. -->

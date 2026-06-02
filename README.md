@@ -10,7 +10,7 @@ Every function in your codebase declares its own authority:
 | Zone | Annotation | Execution | Example use |
 |---|---|---|---|
 | **Deterministic** | `@CodeFunction` | Pure Java | Date arithmetic, text normalisation |
-| **Bounded AI** | `@PromptFunction(model = LOCAL)` | On-device (JLama) | Date extraction, classification |
+| **Bounded AI** | `@PromptFunction(model = LOCAL)` | On-device (ONNX Runtime) | Date extraction, classification |
 | **Elevated AI** | `@PromptFunction(model = CLOUD_ADVANCED)` | Cloud API | Contract summarisation |
 
 The JVM, not the model, enforces which tier a function may use.
@@ -19,7 +19,7 @@ The JVM, not the model, enforces which tier a function may use.
 
 | `ModelTier` | Meaning |
 |---|---|
-| `LOCAL` | On-device inference via JLama — nothing leaves the JVM |
+| `LOCAL` | On-device inference via ONNX Runtime — nothing leaves the JVM |
 | `CLOUD_FAST` | Cloud API (cheap/fast model, e.g. Haiku / GPT-4o-mini) |
 | `CLOUD_ADVANCED` | Cloud API (flagship model, e.g. Claude Opus / GPT-4o) |
 | `AUTO` | Router selects tier based on estimated token count |
@@ -92,15 +92,20 @@ Audit logs replace the argument with the label; the model still receives the rea
 
 ## System requirements
 
-- **Java 21** (LTS). One-line bump to Java 25 when available: change `<java.release>21</java.release>` in the parent POM.
-- Maven 3.9+
+| Resource | Requirement |
+|---|---|
+| **Java** | 17+ (ONNX Runtime has no preview API requirement); the project baseline is **Java 21** because the core orchestrator uses virtual threads |
+| **RAM** | LOCAL tier: 3 GB minimum (Phi-3.5 Mini INT4 ≈ 2 GB model + JVM). CLOUD-only: 512 MB minimum |
+| **GPU** | Not required (CPU inference via ONNX Runtime) |
+| **OS** | Any (x86-64 or ARM64) — ONNX Runtime native libs are auto-selected |
+| **Maven** | 3.9+ |
 
 ## Modules
 
 | Module | Artifact | Purpose |
 |---|---|---|
 | `prooopt-core` | `prooopt-core` | Annotations, AOP, autoboxer, orchestrator, stream API |
-| `prooopt-runtime-local` | `prooopt-runtime-local` | JLama on-device inference |
+| `prooopt-runtime-local` | `prooopt-runtime-local` | ONNX Runtime on-device inference |
 | `prooopt-runtime-cloud` | `prooopt-runtime-cloud` | Anthropic + OpenAI cloud adapters |
 | `prooopt-example` | `prooopt-example` | `LegalAnalyzer` worked example |
 
@@ -213,14 +218,14 @@ executor.submit(PrOOPtThreadPropagator.propagate(() -> prooopt.orchestrate(bean,
 
 - **Virtual threads for cloud calls** — `routeAsync()` uses a virtual-thread pool for blocking cloud
   I/O and a bounded platform pool for CPU-bound LOCAL inference.
-- **Async JLama pre-warming** — `JLamaModelRouter.warmUpAsync()` loads the model on a virtual thread
-  with a trivial warm-up inference so the first real request avoids cold-start cost.
+- **Async model loading** — `OnnxModelLoader.loadAsync()` loads the model on a virtual thread so
+  startup never blocks; the first real request waits only if loading is still in flight.
 - **Compiled prompt templates** — `PromptTemplate.compile()` parses `{placeholders}` once; resolution
   is an `O(n)` join, faster than repeated `String.replace` for 3+ variables.
 - **Metadata caches** — `FunctionRegistry` caches parameter names/types, return types, and compiled
   templates so interception does zero reflection per call.
 - **Constrained generation** — `SchemaGenerator` derives a JSON Schema (Anthropic/OpenAI structured
-  output) or GBNF grammar (JLama) from the return type, driving autoboxing retries toward zero.
+  output) from the return type, driving autoboxing retries toward zero.
 - **Async audit logging** — the audit appender is wrapped in a 4096-entry async (LMAX Disruptor)
   buffer; the calling thread never blocks on disk I/O.
 - **Embedding LRU cache** — `embed()` results are memoised (2,000 entries), cleared on re-fit.
@@ -229,6 +234,5 @@ executor.submit(PrOOPtThreadPropagator.propagate(() -> prooopt.orchestrate(bean,
 
 - Streaming token output via `PromptStream.stream()`
 - Encrypted credential store (AES-GCM, JAR-bundled)
-- ONNX runtime for local inference as an alternative to JLama
 - AspectJ compile-time weaving (`prooopt-agent`) for zero-overhead AOP
 - Maven Central publication (`io.github.argonizer:prooopt-core`)
