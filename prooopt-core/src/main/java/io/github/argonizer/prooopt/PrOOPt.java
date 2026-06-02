@@ -193,10 +193,9 @@ public final class PrOOPt {
 
             PrOOPtLoggingInterceptor interceptor = new PrOOPtLoggingInterceptor(promptEngine, audit);
             java.util.concurrent.ExecutorService cloudExec =
-                    java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+                    io.github.argonizer.prooopt.context.PrOOPtExecutors.newCloudExecutor();
             java.util.concurrent.ExecutorService localExec =
-                    java.util.concurrent.Executors.newFixedThreadPool(
-                            Runtime.getRuntime().availableProcessors());
+                    io.github.argonizer.prooopt.context.PrOOPtExecutors.newLocalExecutor();
             DagExecutor executor = new DagExecutor(registry, promptEngine, audit,
                     cloudExec, localExec, false);
             TwoPhaseOrchestrator orchestrator = new TwoPhaseOrchestrator(router, autoBoxer, indexer,

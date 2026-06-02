@@ -48,7 +48,6 @@
 
     <modules>
         <module>prooopt-core</module>
-        <module>prooopt-runtime-local</module>
         <module>prooopt-runtime-local-java17</module>
         <module>prooopt-runtime-cloud</module>
         <module>prooopt-example</module>
@@ -61,13 +60,13 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!--
-          PrOOPt targets Java 21 (LTS). The local runtime (ONNX Runtime) works on Java 17+,
-          but the core orchestrator uses virtual threads, so 21 is the project baseline.
-          Every language feature PrOOPt uses — records, sealed types, pattern matching,
-          switch expressions, virtual threads — is available on Java 21. No preview or
-          incubator (Vector API) modules are required.
+          PrOOPt targets Java 17 (LTS) across every module. All concurrency uses platform
+          threads (cloud I/O on an elastic daemon pool, LOCAL inference on a bounded pool) — no
+          virtual threads, so nothing requires Java 21. Every language feature PrOOPt uses —
+          records, sealed types, pattern matching, switch expressions — is available on Java 17.
+          No preview or incubator (Vector API) modules are required.
         -->
-        <java.release>21</java.release>
+        <java.release>17</java.release>
         <maven.compiler.release>${java.release}</maven.compiler.release>
 
         <!-- Dependency versions (managed centrally for all modules). -->
@@ -153,11 +152,6 @@
             <dependency>
                 <groupId>io.github.argonizer</groupId>
                 <artifactId>prooopt-core</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.argonizer</groupId>
-                <artifactId>prooopt-runtime-local</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

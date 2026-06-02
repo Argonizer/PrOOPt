@@ -106,7 +106,7 @@ class DagExecutorTest {
         registry.registerInstance(TestFunctions.class, functions);
         registry.registerAll(FunctionScanner.scan(TestFunctions.class));
 
-        cloudExec = Executors.newVirtualThreadPerTaskExecutor();
+        cloudExec = Executors.newCachedThreadPool();
         localExec = Executors.newFixedThreadPool(4);
         AuditLogger audit = new AuditLogger();
         PromptCallEngine engine = new PromptCallEngine(

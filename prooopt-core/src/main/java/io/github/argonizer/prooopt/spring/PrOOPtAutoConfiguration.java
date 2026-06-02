@@ -112,10 +112,9 @@ public class PrOOPtAutoConfiguration {
     @Bean
     public DagExecutor dagExecutor(FunctionRegistry registry, PromptCallEngine engine, AuditLogger audit) {
         java.util.concurrent.ExecutorService cloudExec =
-                java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+                io.github.argonizer.prooopt.context.PrOOPtExecutors.newCloudExecutor();
         java.util.concurrent.ExecutorService localExec =
-                java.util.concurrent.Executors.newFixedThreadPool(
-                        Runtime.getRuntime().availableProcessors());
+                io.github.argonizer.prooopt.context.PrOOPtExecutors.newLocalExecutor();
         return new DagExecutor(registry, engine, audit, cloudExec, localExec, false);
     }
 
