@@ -1,0 +1,35 @@
+prooopt:
+  models:
+    cloud-advanced:
+      provider: anthropic
+      model-id: claude-sonnet-4-6
+      api-key: ${PROOOPT_ANTHROPIC_API_KEY}
+      max-tokens: 4096
+      temperature: 0.1       # Very low — mathematical planning must be precise
+      timeout-ms: 60000
+
+    cloud-fast:
+      provider: anthropic
+      model-id: claude-haiku-4-5
+      api-key: ${PROOOPT_ANTHROPIC_API_KEY}
+      max-tokens: 1024
+      temperature: 0.3
+      timeout-ms: 15000
+
+  orchestration:
+    strategy: two-phase
+    discovery-model: CLOUD_ADVANCED
+    execution-model: CLOUD_ADVANCED
+    min-match-score: 0.35    # Lower threshold — math tool names are precise
+    max-tools: 20            # BODMAS may need many arithmetic steps
+    cache:
+      enabled: false         # PlanMode.DYNAMIC — each expression is unique
+
+  tool-selection:
+    strategy: semantic
+    top-k: 15
+    min-similarity: 0.30
+    embedding-engine: tfidf
+
+  logging:
+    audit-file: logs/prooopt-bodmas-audit.log
