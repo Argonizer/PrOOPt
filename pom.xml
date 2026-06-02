@@ -49,6 +49,7 @@
     <modules>
         <module>prooopt-core</module>
         <module>prooopt-runtime-local</module>
+        <module>prooopt-runtime-local-java17</module>
         <module>prooopt-runtime-cloud</module>
         <module>prooopt-example</module>
         <module>prooopt-example-linear-system</module>
@@ -156,6 +157,11 @@
             <dependency>
                 <groupId>io.github.argonizer</groupId>
                 <artifactId>prooopt-runtime-local</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.argonizer</groupId>
+                <artifactId>prooopt-runtime-local-java17</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
