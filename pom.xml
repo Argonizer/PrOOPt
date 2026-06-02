@@ -50,9 +50,7 @@
         <module>prooopt-core</module>
         <module>prooopt-runtime-local</module>
         <module>prooopt-runtime-cloud</module>
-        <module>prooopt-example</module>
-        <module>prooopt-example-linear-system</module>
-        <module>prooopt-example-bodmas</module>
+        <module>prooopt-examples</module>
     </modules>
 
     <properties>
