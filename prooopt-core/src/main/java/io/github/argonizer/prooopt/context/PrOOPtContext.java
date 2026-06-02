@@ -8,6 +8,8 @@
  */
 package io.github.argonizer.prooopt.context;
 
+import io.github.argonizer.prooopt.dynamic.DynamicFunctionCache;
+
 import java.util.UUID;
 
 /**
@@ -79,6 +81,7 @@ public final class PrOOPtContext {
     /** Clears all thread-local state. Must be called at the end of every run. */
     public static void clear() {
         STATE.remove();
+        DynamicFunctionCache.clear();  // discard all session-generated functions
     }
 
     private static String newTraceId() {

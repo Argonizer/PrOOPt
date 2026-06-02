@@ -11,13 +11,14 @@ package io.github.argonizer.prooopt;
 import io.github.argonizer.prooopt.aop.PrOOPtLoggingInterceptor;
 import io.github.argonizer.prooopt.audit.AuditLogger;
 import io.github.argonizer.prooopt.autobox.PrOOPtAutoBoxer;
+import io.github.argonizer.prooopt.config.PrOOPtConfigLoader;
 import io.github.argonizer.prooopt.config.PrOOPtProperties;
 import io.github.argonizer.prooopt.embedding.EmbeddingEngine;
 import io.github.argonizer.prooopt.embedding.TfIdfEmbeddingEngine;
 import io.github.argonizer.prooopt.embedding.ToolIndexer;
 import io.github.argonizer.prooopt.invoke.PromptCallEngine;
 import io.github.argonizer.prooopt.model.ToolDescriptor;
-import io.github.argonizer.prooopt.orchestrator.PlanExecutor;
+import io.github.argonizer.prooopt.orchestrator.DagExecutor;
 import io.github.argonizer.prooopt.orchestrator.TwoPhaseOrchestrator;
 import io.github.argonizer.prooopt.registry.FunctionRegistry;
 import io.github.argonizer.prooopt.registry.FunctionScanner;
@@ -31,6 +32,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 /**
  * The plain-Java entry point. A small fluent builder assembles a {@link PrOOPtRuntime} from a model
@@ -61,6 +63,7 @@ public final class PrOOPt {
         private EmbeddingEngine embeddingEngine = new TfIdfEmbeddingEngine();
         private PrOOPtProperties properties = new PrOOPtProperties();
         private boolean includeStdlib = true;
+        private ExecutorService threadPool;
 
         private final List<Class<?>> functionClasses = new ArrayList<>();
         private final List<Object> instances = new ArrayList<>();
@@ -79,6 +82,33 @@ public final class PrOOPt {
         public Builder properties(PrOOPtProperties properties) {
             this.properties = properties;
             return this;
+        }
+
+        /** Loads {@link PrOOPtProperties} from a classpath YAML/properties resource. */
+        public Builder configFrom(String resource) {
+            this.properties = new PrOOPtConfigLoader().load(resource);
+            return this;
+        }
+
+        /** Alias for {@link #register(Class[])} matching the documented standalone API. */
+        public Builder scan(Class<?>... classes) {
+            return register(classes);
+        }
+
+        /** Alias for {@link #scanPackages(String[])} matching the documented standalone API. */
+        public Builder scan(String... basePackages) {
+            return scanPackages(basePackages);
+        }
+
+        /** Supplies the executor pool used for tier-aware async routing; closed by {@code shutdown()}. */
+        public Builder threadPool(ExecutorService threadPool) {
+            this.threadPool = threadPool;
+            return this;
+        }
+
+        /** Alias for {@link #router(ModelRouter)} matching the documented standalone API. */
+        public Builder modelRouter(ModelRouter router) {
+            return router(router);
         }
 
         public Builder includeStdlib(boolean includeStdlib) {
@@ -156,12 +186,26 @@ public final class PrOOPt {
                     properties.getToolSelection().getTopK());
             indexer.index(all);
 
-            PrOOPtLoggingInterceptor interceptor = new PrOOPtLoggingInterceptor(promptEngine, audit);
-            PlanExecutor executor = new PlanExecutor(registry, promptEngine, audit);
-            TwoPhaseOrchestrator orchestrator = new TwoPhaseOrchestrator(router, autoBoxer, indexer,
-                    executor, audit, properties.getOrchestration());
+            // Session-scoped dynamic functions dispatch straight through the call engine as String.
+            registry.setDynamicInvoker((fn, args) ->
+                    promptEngine.call(fn.prompt(), fn.model(), 0, 0L, String.class,
+                            new LinkedHashMap<>(args)));
 
-            return new PrOOPtRuntime(registry, indexer, interceptor, promptEngine, orchestrator, router);
+            PrOOPtLoggingInterceptor interceptor = new PrOOPtLoggingInterceptor(promptEngine, audit);
+            java.util.concurrent.ExecutorService cloudExec =
+                    io.github.argonizer.prooopt.context.PrOOPtExecutors.newCloudExecutor();
+            java.util.concurrent.ExecutorService localExec =
+                    io.github.argonizer.prooopt.context.PrOOPtExecutors.newLocalExecutor();
+            DagExecutor executor = new DagExecutor(registry, promptEngine, audit,
+                    cloudExec, localExec, false);
+            TwoPhaseOrchestrator orchestrator = new TwoPhaseOrchestrator(router, autoBoxer, indexer,
+                    executor, audit, properties.getOrchestration(), embeddingEngine);
+
+            // A newly registered function changes what plans are possible — drop stale cached plans.
+            registry.addRegistrationListener(orchestrator::clearPlanCacheFor);
+
+            return new PrOOPtRuntime(registry, indexer, interceptor, promptEngine, orchestrator, router,
+                    threadPool);
         }
 
         private static void addAll(Map<String, ToolDescriptor> sink, List<ToolDescriptor> descriptors) {

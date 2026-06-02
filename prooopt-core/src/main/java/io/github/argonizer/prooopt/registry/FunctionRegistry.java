@@ -8,19 +8,26 @@
  */
 package io.github.argonizer.prooopt.registry;
 
+import io.github.argonizer.prooopt.annotation.PromptFunction;
+import io.github.argonizer.prooopt.dynamic.DynamicPromptFunction;
 import io.github.argonizer.prooopt.exception.PrOOPtConfigException;
 import io.github.argonizer.prooopt.exception.PrOOPtException;
+import io.github.argonizer.prooopt.invoke.PromptTemplate;
+import io.github.argonizer.prooopt.model.FunctionType;
 import io.github.argonizer.prooopt.model.ToolDescriptor;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * The hot path of execution. Reflection is slow only when repeated, so the registry pays that cost
@@ -39,9 +46,53 @@ public class FunctionRegistry {
     private final Map<String, ToolDescriptor> tools = new ConcurrentHashMap<>();
     private final Map<String, Class<?>[]> paramTypes = new ConcurrentHashMap<>();
     private final Map<String, String[]> paramNames = new ConcurrentHashMap<>();
+    private final Map<String, Class<?>> returnTypeCache = new ConcurrentHashMap<>();
+    private final Map<String, PromptTemplate> templateCache = new ConcurrentHashMap<>();
     private final Map<Class<?>, Object> instancePool = new ConcurrentHashMap<>();
 
+    /** Observers notified after a function is (re-)registered — drives plan-cache invalidation. */
+    private final List<Consumer<String>> registrationListeners = new ArrayList<>();
+
+    /** Dispatches a runtime-generated dynamic prompt function; wired by the runtime. */
+    private DynamicInvoker dynamicInvoker;
+
     private final InstanceResolver instanceResolver;
+
+    /** Strategy for invoking a session-scoped {@link DynamicPromptFunction} through a model router. */
+    @FunctionalInterface
+    public interface DynamicInvoker {
+        Object invoke(DynamicPromptFunction fn, Map<String, ?> namedArgs);
+    }
+
+    /** Wires the dynamic dispatcher (PromptCallEngine-backed) used for session-generated functions. */
+    public void setDynamicInvoker(DynamicInvoker dynamicInvoker) {
+        this.dynamicInvoker = dynamicInvoker;
+    }
+
+    /** Registers an observer fired with the function name after each registration. */
+    public void addRegistrationListener(Consumer<String> listener) {
+        registrationListeners.add(listener);
+    }
+
+    /** Cached parameter names for a function (zero reflection at invocation time). */
+    public String[] paramNames(String name) {
+        return paramNames.get(name);
+    }
+
+    /** Cached parameter types for a function. */
+    public Class<?>[] paramTypes(String name) {
+        return paramTypes.get(name);
+    }
+
+    /** Cached return type for a function. */
+    public Class<?> returnType(String name) {
+        return returnTypeCache.get(name);
+    }
+
+    /** The compiled prompt template for a {@code @PromptFunction}, or {@code null} for code functions. */
+    public PromptTemplate template(String name) {
+        return templateCache.get(name);
+    }
 
     public FunctionRegistry() {
         this(null);
@@ -81,8 +132,19 @@ public class FunctionRegistry {
             tools.put(name, tool);
             paramTypes.put(name, method.getParameterTypes());
             paramNames.put(name, tool.paramSchema().keySet().toArray(new String[0]));
+            returnTypeCache.put(name, method.getReturnType());
+            if (tool.type() == FunctionType.PROMPT) {
+                PromptFunction annotation = method.getAnnotation(PromptFunction.class);
+                if (annotation != null) {
+                    templateCache.put(name, PromptTemplate.compile(annotation.prompt()));
+                }
+            }
         } catch (IllegalAccessException e) {
             throw new PrOOPtConfigException("cannot access method for function '" + name + "'", e);
+        }
+        // A new function changes what plans are possible — notify cache invalidators.
+        for (Consumer<String> listener : registrationListeners) {
+            listener.accept(name);
         }
     }
 
@@ -104,6 +166,12 @@ public class FunctionRegistry {
     public Object invokeNamed(String name, Map<String, ?> namedArgs) {
         String[] names = paramNames.get(name);
         if (names == null) {
+            // Not a statically registered function — it may be a session-scoped dynamic function.
+            Optional<DynamicPromptFunction> dynamic = io.github.argonizer.prooopt.dynamic
+                    .DynamicFunctionCache.find(name);
+            if (dynamic.isPresent() && dynamicInvoker != null) {
+                return dynamicInvoker.invoke(dynamic.get(), namedArgs);
+            }
             throw new PrOOPtConfigException("unknown function '" + name + "'");
         }
         Object[] ordered = new Object[names.length];

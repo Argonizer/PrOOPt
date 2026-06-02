@@ -1,0 +1,67 @@
+# PrOOPt configuration for the LegalAnalyzer example.
+#
+# The loader resolves ${ENV_VAR} placeholders from environment variables and
+# then system properties (-DANTHOPIC_API_KEY=...). Never put literal API keys here.
+#
+# To run with a real Anthropic model, export the key and swap MockModelRouter
+# for CloudModelRouter + AnthropicAdapter in LegalAnalyzerDemo.java.
+
+prooopt:
+
+  # ── Model tiers ───────────────────────────────────────────────────────────────
+
+  models:
+
+    # LOCAL — on-device inference via ONNX Runtime (Java 17+); nothing leaves the JVM.
+    # Download e.g. microsoft/Phi-3.5-mini-instruct-onnx from HuggingFace.
+    # Files needed: model.onnx, tokenizer.json, generation_config.json.
+    local:
+      engine: onnx
+      model-path: ${PROOOPT_LOCAL_MODEL_PATH:models/phi-3.5-mini-onnx/model.onnx}
+      tokenizer-path: ${PROOOPT_LOCAL_TOKENIZER_PATH:models/phi-3.5-mini-onnx/tokenizer.json}
+      generation-config-path: models/phi-3.5-mini-onnx/generation_config.json
+      thinking: false
+      maxTokens: 512
+      temperature: 0.3
+      timeoutMs: 60000
+
+    # CLOUD_FAST — cheap cloud tier; used for discovery and light fact-extraction.
+    cloud-fast:
+      engine: anthropic
+      modelId: claude-haiku-4-5
+      apiKey: ${ANTHROPIC_API_KEY}
+      maxTokens: 1024
+      temperature: 0.5
+      timeoutMs: 15000
+
+    # CLOUD_ADVANCED — flagship cloud tier; reserved for final summarisation.
+    cloud-advanced:
+      engine: anthropic
+      modelId: claude-opus-4-8
+      apiKey: ${ANTHROPIC_API_KEY}
+      maxTokens: 2048
+      temperature: 0.7
+      timeoutMs: 30000
+
+    # AUTO — the router picks LOCAL for short requests, CLOUD_FAST above the threshold.
+    auto:
+      strategy: complexity-heuristic
+      tokenThreshold: 500
+      fallback: CLOUD_FAST
+
+  # ── Tool selection (semantic matching before the orchestrator sees tools) ─────
+
+  tool-selection:
+    strategy: semantic
+    top-k: 10
+    min-similarity: 0.30
+    embedding-engine: tfidf   # "tfidf" (zero-dep) or "local-model" (ONNX dense vectors)
+
+  # ── Orchestration (two-phase discovery → planning → execution) ───────────────
+
+  orchestration:
+    strategy: two-phase
+    discovery-model: LOCAL          # cheap phase-1 discovery
+    execution-model: AUTO           # phase-3 planning; AUTO escalates if needed
+    min-match-score: 0.40           # minimum cosine score to bind a capability to a tool
+    max-tools: 15                   # hard cap on tools handed to the planner

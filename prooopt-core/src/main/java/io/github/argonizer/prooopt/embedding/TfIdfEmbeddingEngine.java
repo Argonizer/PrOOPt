@@ -9,8 +9,10 @@
 package io.github.argonizer.prooopt.embedding;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -25,14 +27,26 @@ public class TfIdfEmbeddingEngine implements EmbeddingEngine {
 
     private static final Pattern TOKEN = Pattern.compile("[^a-z0-9]+");
 
+    private static final int CACHE_SIZE = 2000;
+
     private final Map<String, Integer> vocabulary = new HashMap<>();
     private final Map<String, Double> idf = new HashMap<>();
     private int dimension;
+
+    /** Bounded LRU cache of computed embeddings — repeated capability/input strings hit it often. */
+    private final Map<String, float[]> cache = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, float[]> eldest) {
+                    return size() > CACHE_SIZE;
+                }
+            });
 
     @Override
     public void fit(Collection<String> corpus) {
         vocabulary.clear();
         idf.clear();
+        cache.clear();  // vocabulary changed — prior vectors are no longer valid
 
         Map<String, Integer> documentFrequency = new HashMap<>();
         int documentCount = 0;
@@ -55,6 +69,17 @@ public class TfIdfEmbeddingEngine implements EmbeddingEngine {
 
     @Override
     public float[] embed(String text) {
+        String key = text == null ? "" : text;
+        float[] cached = cache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        float[] computed = computeEmbedding(text);
+        cache.put(key, computed);
+        return computed;
+    }
+
+    private float[] computeEmbedding(String text) {
         float[] vector = new float[Math.max(dimension, 1)];
         if (dimension == 0) {
             return vector;

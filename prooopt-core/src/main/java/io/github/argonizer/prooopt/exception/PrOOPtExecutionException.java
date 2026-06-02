@@ -14,17 +14,17 @@ package io.github.argonizer.prooopt.exception;
  */
 public class PrOOPtExecutionException extends PrOOPtException {
 
-    private final int stepId;
+    private final String stepId;
     private final String function;
 
-    public PrOOPtExecutionException(int stepId, String function, String message, Throwable cause) {
+    public PrOOPtExecutionException(String stepId, String function, String message, Throwable cause) {
         super("step " + stepId + " (" + function + "): " + message, cause);
         this.stepId = stepId;
         this.function = function;
     }
 
     /** The {@code stepId} of the failing step. */
-    public int getStepId() {
+    public String getStepId() {
         return stepId;
     }
 
