@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ PrOOPt — Object-Oriented Prompt Engineering for Java.
+  ~
+  ~ Copyright (c) 2026 Akshay Rawal
+  ~ SPDX-License-Identifier: MIT
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.argonizer</groupId>
+        <artifactId>prooopt-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>prooopt-examples</artifactId>
+    <name>PrOOPt Examples</name>
+    <description>
+        Worked, runnable PrOOPt examples in one module: a Legal Analyzer (mixed deterministic and
+        bounded/elevated AI), an n×n Linear System solver, and a BODMAS/PEMDAS DAG solver. Each runs
+        against a deterministic mock router — no API key needed. Pick a demo with -Dexec.mainClass.
+    </description>
+    <url>https://github.com/argonizer/PrOOPt</url>
+
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <!-- Default demo; override with -Dexec.mainClass=… (see README for all three). -->
+        <exec.mainClass>io.github.argonizer.prooopt.example.bodmas.BodmasSolver</exec.mainClass>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.argonizer</groupId>
+            <artifactId>prooopt-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>${exec.mainClass}</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

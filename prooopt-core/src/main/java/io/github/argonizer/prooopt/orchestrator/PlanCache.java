@@ -76,7 +76,7 @@ public class PlanCache {
                 store.put(UUID.randomUUID().toString(), new CachedPlan(plan, embedding, safe, now()));
             }
         }
-        audit.planCacheStored(plan.steps().size(), ttlMs < 0 ? -1 : ttlMs / 1000L);
+        audit.planCacheStored(plan.allSteps().size(), ttlMs < 0 ? -1 : ttlMs / 1000L);
     }
 
     /** Retrieves a matching template, or {@link Optional#empty()} on miss or TTL expiry. */
@@ -110,7 +110,7 @@ public class PlanCache {
             Iterator<Map.Entry<String, CachedPlan>> it = store.entrySet().iterator();
             while (it.hasNext()) {
                 ExecutionPlan plan = it.next().getValue().plan();
-                boolean referenced = plan.steps().stream()
+                boolean referenced = plan.allSteps().values().stream()
                         .anyMatch(s -> functionName.equals(s.function()));
                 if (referenced) {
                     it.remove();

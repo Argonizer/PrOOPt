@@ -89,4 +89,16 @@ public @interface PromptOrchestrator {
 
     /** Minimum cosine similarity for a {@link PlanCacheStrategy#SEMANTIC} cache hit. */
     double planCacheSimilarityThreshold() default 0.85;
+
+    // ------------------------------------------------------------------ DAG execution
+
+    /**
+     * Global wall-clock timeout in milliseconds for a complete DAG execution run.
+     * If the DAG does not complete within this window, all pending futures are cancelled and a
+     * {@link io.github.argonizer.prooopt.exception.PrOOPtExecutionException} is thrown.
+     *
+     * <p>Default: 120000 (2 minutes).
+     * Set to {@code -1} to disable the global timeout (not recommended for production).
+     */
+    long dagTimeoutMs() default 120_000L;
 }

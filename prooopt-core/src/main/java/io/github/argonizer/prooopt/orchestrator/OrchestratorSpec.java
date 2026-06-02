@@ -15,9 +15,9 @@ import io.github.argonizer.prooopt.model.PlanMode;
 
 /**
  * The runtime view of a {@code @PromptOrchestrator}: its system prompt, execution preferences, dynamic
- * function policy, and plan-cache settings, plus the optional {@link BaseOrchestrator} whose lifecycle
- * hooks should fire. Decouples the orchestration engine from the annotation so it can also be driven
- * programmatically or in tests.
+ * function policy, plan-cache settings, and DAG timeout, plus the optional {@link BaseOrchestrator}
+ * whose lifecycle hooks should fire. Decouples the orchestration engine from the annotation so it can
+ * also be driven programmatically or in tests.
  */
 public record OrchestratorSpec(
         String systemPrompt,
@@ -31,7 +31,8 @@ public record OrchestratorSpec(
         PlanCacheStrategy planCacheStrategy,
         long planCacheTtl,
         int planCacheSize,
-        double planCacheSimilarityThreshold) {
+        double planCacheSimilarityThreshold,
+        long dagTimeoutMs) {
 
     /** Builds a spec from an annotation and (optionally) the orchestrator bean providing hooks. */
     public static OrchestratorSpec from(PromptOrchestrator annotation, BaseOrchestrator hooks) {
@@ -39,12 +40,12 @@ public record OrchestratorSpec(
                 hooks, annotation.allowDynamic(), annotation.maxDynamicFunctions(),
                 annotation.dynamicFunctionModel(), annotation.planMode(), annotation.planCacheStrategy(),
                 annotation.planCacheTtl(), annotation.planCacheSize(),
-                annotation.planCacheSimilarityThreshold());
+                annotation.planCacheSimilarityThreshold(), annotation.dagTimeoutMs());
     }
 
     /** A minimal spec with just a system prompt: sequential, STATIC plan mode, no dynamic functions. */
     public static OrchestratorSpec of(String systemPrompt) {
         return new OrchestratorSpec(systemPrompt, false, -1, null, false, 3, ModelTier.CLOUD_FAST,
-                PlanMode.STATIC, PlanCacheStrategy.SEMANTIC, 3600, 500, 0.85);
+                PlanMode.STATIC, PlanCacheStrategy.SEMANTIC, 3600, 500, 0.85, 120_000L);
     }
 }

@@ -10,6 +10,7 @@ package io.github.argonizer.prooopt;
 
 import io.github.argonizer.prooopt.annotation.PromptOrchestrator;
 import io.github.argonizer.prooopt.aop.PrOOPtLoggingInterceptor;
+import io.github.argonizer.prooopt.context.PrOOPtExecutors;
 import io.github.argonizer.prooopt.embedding.ToolIndexer;
 import io.github.argonizer.prooopt.exception.PrOOPtConfigException;
 import io.github.argonizer.prooopt.invoke.PromptCallEngine;
@@ -23,7 +24,6 @@ import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * A fully wired PrOOPt instance for plain-Java use: registry, semantic index, AOP interceptor, shared
@@ -39,12 +39,11 @@ public final class PrOOPtRuntime {
     private final TwoPhaseOrchestrator orchestrator;
     private final ModelRouter router;
 
-    /** Cloud calls are blocking I/O — virtual threads eliminate OS thread waste. */
-    private final ExecutorService cloudExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    /** Cloud calls are blocking I/O — an elastic daemon platform-thread pool (Java 17). */
+    private final ExecutorService cloudExecutor = PrOOPtExecutors.newCloudExecutor();
 
-    /** LOCAL inference is CPU-bound — platform threads only. */
-    private final ExecutorService localExecutor =
-            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    /** LOCAL inference is CPU-bound — a bounded platform-thread pool. */
+    private final ExecutorService localExecutor = PrOOPtExecutors.newLocalExecutor();
 
     /** Optional user-supplied pool (from {@code builder().threadPool(...)}); closed on shutdown. */
     private final ExecutorService userThreadPool;

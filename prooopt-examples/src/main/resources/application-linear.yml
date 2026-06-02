@@ -1,0 +1,46 @@
+prooopt:
+  models:
+    # LOCAL TIER — ONNX Runtime (zero external process, Java 17+)
+    # Download model from HuggingFace:
+    #   microsoft/Phi-3.5-mini-instruct-onnx  (recommended, MIT license)
+    #   Qwen/Qwen2.5-0.5B-Instruct-ONNX      (lighter, ~400MB)
+    #   Qwen/Qwen2.5-1.5B-Instruct-ONNX      (balanced, ~900MB)
+    # Model files needed: model.onnx, tokenizer.json, generation_config.json
+    local:
+      # On-device inference via ONNX Runtime — nothing leaves the JVM.
+      # interpretSolution and explainMethod run here.
+      engine: onnx
+      model-path: ${PROOOPT_LOCAL_MODEL_PATH:models/phi-3.5-mini-onnx/model.onnx}
+      tokenizer-path: ${PROOOPT_LOCAL_TOKENIZER_PATH:models/phi-3.5-mini-onnx/tokenizer.json}
+      generation-config-path: models/phi-3.5-mini-onnx/generation_config.json
+      thinking: false
+      max-tokens: 1024
+      temperature: 0.7
+      timeout-ms: 30000
+      intra-throughput-threads: 4   # tune to available CPU cores
+
+    cloud:
+      # CLOUD_ADVANCED: flagship model for orchestration planning.
+      # The system prompt and plan-generation call use this tier.
+      apiKey: ${PROOOPT_ANTHROPIC_API_KEY}
+      provider: anthropic
+      model: claude-opus-4-8
+      temperature: 0.2        # Low temperature: planning and math require determinism
+      maxTokens: 2048
+      timeoutSeconds: 60
+
+  orchestrator:
+    planMode: DYNAMIC          # Fresh plan per invocation (input is unique each call)
+    planCache:
+      strategy: EXACT
+      ttlSeconds: -1           # No caching — planMode DYNAMIC bypasses the cache anyway
+      maxSize: 0
+
+  audit:
+    enabled: true
+    loggerName: io.github.argonizer.prooopt.audit
+    asyncBufferSize: 4096
+
+  threadPool:
+    cloudVirtualThreads: true  # Virtual threads for blocking cloud I/O
+    localPlatformThreads: 4    # Bounded pool for CPU-bound LOCAL inference

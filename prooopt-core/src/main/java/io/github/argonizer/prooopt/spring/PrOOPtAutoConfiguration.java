@@ -18,7 +18,7 @@ import io.github.argonizer.prooopt.embedding.TfIdfEmbeddingEngine;
 import io.github.argonizer.prooopt.embedding.ToolIndexer;
 import io.github.argonizer.prooopt.invoke.PromptCallEngine;
 import io.github.argonizer.prooopt.model.ToolDescriptor;
-import io.github.argonizer.prooopt.orchestrator.PlanExecutor;
+import io.github.argonizer.prooopt.orchestrator.DagExecutor;
 import io.github.argonizer.prooopt.orchestrator.TwoPhaseOrchestrator;
 import io.github.argonizer.prooopt.registry.FunctionRegistry;
 import io.github.argonizer.prooopt.registry.FunctionScanner;
@@ -110,13 +110,17 @@ public class PrOOPtAutoConfiguration {
     }
 
     @Bean
-    public PlanExecutor planExecutor(FunctionRegistry registry, PromptCallEngine engine, AuditLogger audit) {
-        return new PlanExecutor(registry, engine, audit);
+    public DagExecutor dagExecutor(FunctionRegistry registry, PromptCallEngine engine, AuditLogger audit) {
+        java.util.concurrent.ExecutorService cloudExec =
+                io.github.argonizer.prooopt.context.PrOOPtExecutors.newCloudExecutor();
+        java.util.concurrent.ExecutorService localExec =
+                io.github.argonizer.prooopt.context.PrOOPtExecutors.newLocalExecutor();
+        return new DagExecutor(registry, engine, audit, cloudExec, localExec, false);
     }
 
     @Bean
     public TwoPhaseOrchestrator twoPhaseOrchestrator(ModelRouter router, PrOOPtAutoBoxer autoBoxer,
-                                                     ToolIndexer indexer, PlanExecutor executor,
+                                                     ToolIndexer indexer, DagExecutor executor,
                                                      AuditLogger audit, PrOOPtProperties properties,
                                                      EmbeddingEngine embeddingEngine) {
         return new TwoPhaseOrchestrator(router, autoBoxer, indexer, executor, audit,

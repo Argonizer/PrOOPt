@@ -22,6 +22,7 @@ import io.github.argonizer.prooopt.exception.PrOOPtAutoBoxException;
 import io.github.argonizer.prooopt.exception.PrOOPtException;
 import io.github.argonizer.prooopt.model.ExecutionPlan;
 import io.github.argonizer.prooopt.model.ExecutionStep;
+import io.github.argonizer.prooopt.model.ExecutionStream;
 import io.github.argonizer.prooopt.model.FunctionType;
 import io.github.argonizer.prooopt.model.ModelTier;
 import io.github.argonizer.prooopt.model.PlanMode;
@@ -58,7 +59,7 @@ public class TwoPhaseOrchestrator {
     private final ModelRouter router;
     private final PrOOPtAutoBoxer autoBoxer;
     private final ToolIndexer indexer;
-    private final PlanExecutor executor;
+    private final DagExecutor executor;
     private final AuditLogger audit;
     private final OrchestrationConfig config;
     private final EmbeddingEngine embeddingEngine;
@@ -68,7 +69,7 @@ public class TwoPhaseOrchestrator {
     private final Map<String, PlanCache> planCaches = new ConcurrentHashMap<>();
 
     public TwoPhaseOrchestrator(ModelRouter router, PrOOPtAutoBoxer autoBoxer, ToolIndexer indexer,
-                                PlanExecutor executor, AuditLogger audit, OrchestrationConfig config,
+                                DagExecutor executor, AuditLogger audit, OrchestrationConfig config,
                                 EmbeddingEngine embeddingEngine) {
         this.router = router;
         this.autoBoxer = autoBoxer;
@@ -126,14 +127,14 @@ public class TwoPhaseOrchestrator {
             }
 
             long execStart = System.currentTimeMillis();
-            Object result = executor.execute(plan, input, spec.parallel(), spec.maxThreads(), spec.hooks());
+            Object result = executor.execute(plan, input, spec.hooks(), spec.dagTimeoutMs());
             long execMs = System.currentTimeMillis() - execStart;
 
             long totalMs = System.currentTimeMillis() - start;
             emitSummary(traceId, plan, inputStr, totalMs, planGenerationMs, execMs, spec.planMode(),
                     cached, planningWasCloud, dynamicGenerated);
             if (spec.hooks() != null) {
-                spec.hooks().onRunComplete(traceId, totalMs, plan.steps().size());
+                spec.hooks().onRunComplete(traceId, totalMs, plan.allSteps().size());
             }
             return result;
         } finally {
@@ -311,18 +312,24 @@ public class TwoPhaseOrchestrator {
                 Produce an execution plan as a single JSON object with this schema:
                 {
                   "traceId": "string",
-                  "steps": [
-                    { "stepId": 1, "function": "<toolName>", "type": "CODE|PROMPT",
-                      "model": "LOCAL|CLOUD_FAST|CLOUD_ADVANCED|AUTO",
-                      "args": { "<paramName>": "<literal or $variable or ${userInput}>" },
-                      "dependsOn": [<stepIds>], "assignTo": "$<variableName>" }
+                  "streams": [
+                    {
+                      "streamId": "S1",
+                      "steps": [
+                        { "stepId": "S1.1", "streamId": "S1", "function": "<toolName>",
+                          "type": "CODE|PROMPT", "model": "LOCAL|CLOUD_FAST|CLOUD_ADVANCED|AUTO",
+                          "args": { "<paramName>": "<literal or $S1.1 or ${userInput}>" },
+                          "dependsOn": ["S1.0"], "assignTo": "$<variableName>", "timeoutMs": 0 }
+                      ]
+                    }
                   ],
                   "output": "$<variableName>"
                 }
 
-                Rules: reference the user input as ${userInput}; reference a prior step's result by its
-                assignTo name (for example $date); set dependsOn to the stepIds whose results a step
-                needs; "type" must match the tool; omit "model" for CODE steps.
+                Rules: stepIds are globally unique strings like "S1.1"; reference the user input as
+                ${userInput}; reference a prior step's result by its stepId (e.g. $S1.1) or assignTo
+                name (e.g. $date); dependsOn lists stepIds whose results a step needs; "type" must
+                match the tool; omit "model" for CODE steps; use a single stream "S1" for simple plans.
 
                 User request:
                 """);
@@ -361,11 +368,11 @@ public class TwoPhaseOrchestrator {
             byName.put(tool.name(), tool);
         }
 
-        int functions = plan.steps().size();
+        int functions = plan.allSteps().size();
         int code = 0;
         int local = 0;
         int cloud = 0;
-        for (ExecutionStep step : plan.steps()) {
+        for (ExecutionStep step : plan.allSteps().values()) {
             ToolDescriptor descriptor = byName.get(step.function());
             FunctionType type = descriptor != null ? descriptor.type() : step.type();
             ModelTier tier = descriptor != null ? descriptor.modelTier() : step.model();
