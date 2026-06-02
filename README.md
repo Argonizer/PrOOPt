@@ -105,7 +105,7 @@ Audit logs replace the argument with the label; the model still receives the rea
 | Module | Artifact | Purpose |
 |---|---|---|
 | `prooopt-core` | `prooopt-core` | Annotations, AOP, autoboxer, orchestrator, stream API |
-| `prooopt-runtime-local-java17` | `prooopt-runtime-local-java17` | ONNX Runtime on-device inference (Java 17+) |
+| `prooopt-runtime-local` | `prooopt-runtime-local` | ONNX Runtime on-device inference (Java 17+) |
 | `prooopt-runtime-cloud` | `prooopt-runtime-cloud` | Anthropic + OpenAI cloud adapters |
 | `prooopt-example` | `prooopt-example` | `LegalAnalyzer` worked example |
 

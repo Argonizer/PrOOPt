@@ -20,7 +20,7 @@ public final class NoRuntimeModelRouter implements ModelRouter {
     public String route(String prompt, ModelTier tier) {
         throw new UnsupportedOperationException(
                 "No PrOOPt runtime is on the classpath, so tier " + tier + " cannot be served. "
-                        + "Add 'prooopt-runtime-local-java17' for on-device LOCAL inference, and/or "
+                        + "Add 'prooopt-runtime-local' for on-device LOCAL inference, and/or "
                         + "'prooopt-runtime-cloud' for the CLOUD_FAST / CLOUD_ADVANCED tiers.");
     }
 
