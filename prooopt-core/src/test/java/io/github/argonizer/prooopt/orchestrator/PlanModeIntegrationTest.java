@@ -23,9 +23,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * End-to-end coverage of the Delta build: STATIC vs DYNAMIC plan modes (verified by counting the
- * Cloud LLM plan-generation calls) and dynamic prompt-function generation with a {@code maxDynamic}
- * budget.
+ * End-to-end coverage of STATIC vs DYNAMIC plan modes (verified by counting the Cloud LLM
+ * plan-generation calls) and dynamic prompt-function generation with a {@code maxDynamic} budget.
  */
 class PlanModeIntegrationTest {
 
@@ -61,7 +60,7 @@ class PlanModeIntegrationTest {
 
     // ---- Routers ----
 
-    /** Returns canned discovery + plan for the echo orchestrator and counts plan-generation calls. */
+    /** Returns canned discovery + DAG plan for the echo orchestrator and counts plan-gen calls. */
     static class EchoRouter implements ModelRouter {
         final AtomicInteger planGenerations = new AtomicInteger();
 
@@ -70,10 +69,10 @@ class PlanModeIntegrationTest {
             if (prompt.contains("Produce an execution plan")) {
                 planGenerations.incrementAndGet();
                 return """
-                        {"traceId":"t","steps":[
-                          {"stepId":1,"function":"echo","type":"CODE",
-                           "args":{"text":"${userInput}"},"dependsOn":[],"assignTo":"$out"}],
-                         "output":"$out"}
+                        {"traceId":"t","streams":[{"streamId":"S1","steps":[
+                          {"stepId":"S1.1","streamId":"S1","function":"echo","type":"CODE",
+                           "args":{"text":"${userInput}"},"dependsOn":[],"assignTo":"$out","timeoutMs":0}
+                        ]}],"output":"$out"}
                         """;
             }
             if (prompt.contains("planning assistant")) {
@@ -83,7 +82,7 @@ class PlanModeIntegrationTest {
         }
     }
 
-    /** Drives the dynamic-gap path: generation JSON, plan referencing it, and the leaf result. */
+    /** Drives the dynamic-gap path: generation JSON, DAG plan referencing it, and the leaf result. */
     static class GapRouter implements ModelRouter {
         final AtomicInteger generations = new AtomicInteger();
 
@@ -98,10 +97,11 @@ class PlanModeIntegrationTest {
             }
             if (prompt.contains("Produce an execution plan")) {
                 return """
-                        {"traceId":"t","steps":[
-                          {"stepId":1,"function":"computeThing","type":"PROMPT","model":"LOCAL",
-                           "args":{"input":"${userInput}"},"dependsOn":[],"assignTo":"$out"}],
-                         "output":"$out"}
+                        {"traceId":"t","streams":[{"streamId":"S1","steps":[
+                          {"stepId":"S1.1","streamId":"S1","function":"computeThing","type":"PROMPT",
+                           "model":"LOCAL","args":{"input":"${userInput}"},"dependsOn":[],
+                           "assignTo":"$out","timeoutMs":0}
+                        ]}],"output":"$out"}
                         """;
             }
             if (prompt.contains("planning assistant")) {

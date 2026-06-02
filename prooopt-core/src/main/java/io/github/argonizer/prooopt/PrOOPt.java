@@ -18,7 +18,7 @@ import io.github.argonizer.prooopt.embedding.TfIdfEmbeddingEngine;
 import io.github.argonizer.prooopt.embedding.ToolIndexer;
 import io.github.argonizer.prooopt.invoke.PromptCallEngine;
 import io.github.argonizer.prooopt.model.ToolDescriptor;
-import io.github.argonizer.prooopt.orchestrator.PlanExecutor;
+import io.github.argonizer.prooopt.orchestrator.DagExecutor;
 import io.github.argonizer.prooopt.orchestrator.TwoPhaseOrchestrator;
 import io.github.argonizer.prooopt.registry.FunctionRegistry;
 import io.github.argonizer.prooopt.registry.FunctionScanner;
@@ -192,7 +192,13 @@ public final class PrOOPt {
                             new LinkedHashMap<>(args)));
 
             PrOOPtLoggingInterceptor interceptor = new PrOOPtLoggingInterceptor(promptEngine, audit);
-            PlanExecutor executor = new PlanExecutor(registry, promptEngine, audit);
+            java.util.concurrent.ExecutorService cloudExec =
+                    java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+            java.util.concurrent.ExecutorService localExec =
+                    java.util.concurrent.Executors.newFixedThreadPool(
+                            Runtime.getRuntime().availableProcessors());
+            DagExecutor executor = new DagExecutor(registry, promptEngine, audit,
+                    cloudExec, localExec, false);
             TwoPhaseOrchestrator orchestrator = new TwoPhaseOrchestrator(router, autoBoxer, indexer,
                     executor, audit, properties.getOrchestration(), embeddingEngine);
 

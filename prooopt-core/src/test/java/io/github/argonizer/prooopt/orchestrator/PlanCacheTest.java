@@ -13,6 +13,7 @@ import io.github.argonizer.prooopt.embedding.EmbeddingEngine;
 import io.github.argonizer.prooopt.embedding.TfIdfEmbeddingEngine;
 import io.github.argonizer.prooopt.model.ExecutionPlan;
 import io.github.argonizer.prooopt.model.ExecutionStep;
+import io.github.argonizer.prooopt.model.ExecutionStream;
 import io.github.argonizer.prooopt.model.ModelTier;
 import io.github.argonizer.prooopt.model.PlanCacheStrategy;
 import io.github.argonizer.prooopt.router.ModelRouter;
@@ -30,9 +31,10 @@ class PlanCacheTest {
     private final AuditLogger audit = new AuditLogger();
 
     private static ExecutionPlan planWith(String function) {
-        ExecutionStep step = new ExecutionStep(1, function, null, null,
-                Map.of("text", "${userInput}"), List.of(), "$out");
-        return new ExecutionPlan("t", List.of(step), "$out");
+        ExecutionStep step = new ExecutionStep("S1.1", "S1", function, null, null,
+                Map.of("text", "${userInput}"), List.of(), "$out", 0);
+        ExecutionStream stream = new ExecutionStream("S1", List.of(step));
+        return new ExecutionPlan("t", List.of(stream), "$out");
     }
 
     private EmbeddingEngine fittedEngine() {
