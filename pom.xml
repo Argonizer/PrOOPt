@@ -218,106 +218,70 @@
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>${maven-jar-plugin.version}</version>
                 </plugin>
-
-                <!-- Release-profile: sources, javadoc, GPG signing, Central Portal upload. -->
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>${maven-source-plugin.version}</version>
-                    <executions>
-                        <execution>
-                            <id>attach-sources</id>
-                            <goals><goal>jar-no-fork</goal></goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>${maven-javadoc-plugin.version}</version>
-                    <configuration>
-                        <!-- Suppress missing-tag doclint warnings so the build does not fail on
-                             undocumented parameters / return values in internal classes. -->
-                        <doclint>all,-missing</doclint>
-                        <quiet>true</quiet>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>attach-javadocs</id>
-                            <goals><goal>jar</goal></goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>${maven-gpg-plugin.version}</version>
-                    <configuration>
-                        <!-- The passphrase is supplied via the GPG_PASSPHRASE env var injected
-                             by the publish workflow. The pinentry-mode loopback flag makes GPG
-                             read it non-interactively on the GitHub Actions runner. -->
-                        <gpgArguments>
-                            <arg>--pinentry-mode</arg>
-                            <arg>loopback</arg>
-                        </gpgArguments>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>sign-artifacts</id>
-                            <phase>verify</phase>
-                            <goals><goal>sign</goal></goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <!-- Central Portal publisher — replaces the legacy nexus-staging-maven-plugin.
-                         autoPublish=true releases the bundle immediately (skips the manual "Release"
-                         button in the Central Portal UI); set to false to review in staging first. -->
                     <groupId>org.sonatype.central</groupId>
                     <artifactId>central-publishing-maven-plugin</artifactId>
-                    <version>${central-publishing-plugin.version}</version>
+                    <version>0.10.0</version>
                     <extensions>true</extensions>
                     <configuration>
-                        <!-- Must match the <server id="central"> written by setup-java. -->
                         <publishingServerId>central</publishingServerId>
                         <autoPublish>true</autoPublish>
-                        <!-- Wait until the artifact is fully published before the workflow exits.
-                             Use waitUntil=validated to return as soon as checks pass (faster). -->
                         <waitUntil>published</waitUntil>
                     </configuration>
                 </plugin>
             </plugins>
+            <!-- Central Portal publisher — replaces old nexus-staging-maven-plugin -->
         </pluginManagement>
     </build>
 
-    <!--
-      The "release" profile is activated explicitly with -P release during the publish workflow.
-      It is NOT active during normal builds, so GPG signing and javadoc generation do not slow
-      down local development or CI test runs.
-    -->
     <profiles>
         <profile>
             <id>release</id>
             <build>
                 <plugins>
+                    <!-- Sources JAR — required by Central -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
+                        <version>3.4.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals><goal>jar-no-fork</goal></goals>
+                            </execution>
+                        </executions>
                     </plugin>
+
+                    <!-- Javadoc JAR — required by Central -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.12.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals><goal>jar</goal></goals>
+                            </execution>
+                        </executions>
                     </plugin>
+
+                    <!-- GPG signing — required by Central -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
                     </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.central</groupId>
-                        <artifactId>central-publishing-maven-plugin</artifactId>
-                    </plugin>
+
                 </plugins>
             </build>
         </profile>
     </profiles>
 </project>
+
