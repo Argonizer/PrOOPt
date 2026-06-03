@@ -14,3 +14,4 @@ logs/
 .DS_Store
 *.onnx.data
 *.onnx
+.run/
