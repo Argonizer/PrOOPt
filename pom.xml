@@ -232,6 +232,23 @@
             </plugins>
             <!-- Central Portal publisher — replaces old nexus-staging-maven-plugin -->
         </pluginManagement>
+
+        <plugins>
+            <!--
+              central-publishing-maven-plugin MUST be in the main build (not a profile) so it
+              registers as a lifecycle extension and replaces maven-deploy-plugin before Maven
+              evaluates profiles. When declared only inside a profile the extension is loaded too
+              late and maven-deploy-plugin fires first (failing because distributionManagement is
+              absent). Skip is true by default; the "release" profile overrides it to false.
+            -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <profiles>
@@ -277,6 +294,15 @@
                                 <goals><goal>sign</goal></goals>
                             </execution>
                         </executions>
+                    </plugin>
+
+                    <!-- Activate the publisher declared in the main build. -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
                     </plugin>
 
                 </plugins>
