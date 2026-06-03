@@ -1,4 +1,6 @@
-# The PrOOPt Philosophy
+# The Philosophy behind PrOOPt
+
+![PrOOPt Logo](./PrOOPt_iconography.png "PrOOPt Logo")
 
 *Object-Oriented Prompt Engineering for Java*
 *Copyright (c) 2026 Akshay Rawal — MIT License*

@@ -1,5 +1,7 @@
 # PrOOPt — Object-Oriented Prompt Engineering for Java
 
+![PrOOPt Logo](./PrOOPt_iconography.png "PrOOPt Logo")
+
 PrOOPt brings LLM calls under the same engineering discipline as ordinary Java code: scoped at the
 function level, governed by annotations, and observable through a structured audit trail.
 
