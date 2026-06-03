@@ -1,0 +1,39 @@
+##
+## PrOOPt — Object-Oriented Prompt Engineering for Java.
+## Copyright (c) 2026 Akshay Rawal  –  MIT License
+##
+## CI: compile + test on every push and pull-request.
+## Publish is handled by publish.yml (release/** and pilot-implementation/** branches only).
+##
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Test (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['17', '21']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: temurin
+          cache: maven
+
+      - name: Build and test
+        run: mvn --no-transfer-progress --batch-mode verify

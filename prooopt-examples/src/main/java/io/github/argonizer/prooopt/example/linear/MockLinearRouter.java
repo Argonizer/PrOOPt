@@ -34,24 +34,24 @@ public final class MockLinearRouter implements ModelRouter {
 
         // Phase 2 – execution plan (dimension-agnostic: ${userInput} is the augmented matrix)
         if (prompt.contains("Produce an execution plan")) {
-            return "{\"traceId\":\"linear-1\",\"steps\":["
-                    + "{\"stepId\":1,\"function\":\"gaussianElimination\",\"type\":\"CODE\","
-                    + "\"args\":{\"augmented\":\"${userInput}\"},\"dependsOn\":[],\"assignTo\":\"$sol\"},"
-                    + "{\"stepId\":2,\"function\":\"verifySolution\",\"type\":\"CODE\","
-                    + "\"args\":{\"augmented\":\"${userInput}\",\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$ok\"},"
-                    + "{\"stepId\":3,\"function\":\"computeResidual\",\"type\":\"CODE\","
-                    + "\"args\":{\"augmented\":\"${userInput}\",\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$res\"},"
-                    + "{\"stepId\":4,\"function\":\"formatVectorAsFractions\",\"type\":\"CODE\","
-                    + "\"args\":{\"solution\":\"$sol\"},\"dependsOn\":[1],\"assignTo\":\"$fracs\"},"
-                    + "{\"stepId\":5,\"function\":\"summarizeSolution\",\"type\":\"CODE\","
-                    + "\"args\":{\"solution\":\"$sol\",\"fractions\":\"$fracs\"},\"dependsOn\":[1,4],\"assignTo\":\"$summary\"},"
-                    + "{\"stepId\":6,\"function\":\"interpretSolution\",\"type\":\"PROMPT\",\"model\":\"LOCAL\","
+            return "{\"traceId\":\"linear-1\",\"streams\":[{\"streamId\":\"S1\",\"steps\":["
+                    + "{\"stepId\":\"S1.1\",\"streamId\":\"S1\",\"function\":\"gaussianElimination\",\"type\":\"CODE\","
+                    + "\"args\":{\"augmented\":\"${userInput}\"},\"dependsOn\":[],\"assignTo\":\"$sol\",\"timeoutMs\":0},"
+                    + "{\"stepId\":\"S1.2\",\"streamId\":\"S1\",\"function\":\"verifySolution\",\"type\":\"CODE\","
+                    + "\"args\":{\"augmented\":\"${userInput}\",\"solution\":\"$sol\"},\"dependsOn\":[\"S1.1\"],\"assignTo\":\"$ok\",\"timeoutMs\":0},"
+                    + "{\"stepId\":\"S1.3\",\"streamId\":\"S1\",\"function\":\"computeResidual\",\"type\":\"CODE\","
+                    + "\"args\":{\"augmented\":\"${userInput}\",\"solution\":\"$sol\"},\"dependsOn\":[\"S1.1\"],\"assignTo\":\"$res\",\"timeoutMs\":0},"
+                    + "{\"stepId\":\"S1.4\",\"streamId\":\"S1\",\"function\":\"formatVectorAsFractions\",\"type\":\"CODE\","
+                    + "\"args\":{\"solution\":\"$sol\"},\"dependsOn\":[\"S1.1\"],\"assignTo\":\"$fracs\",\"timeoutMs\":0},"
+                    + "{\"stepId\":\"S1.5\",\"streamId\":\"S1\",\"function\":\"summarizeSolution\",\"type\":\"CODE\","
+                    + "\"args\":{\"solution\":\"$sol\",\"fractions\":\"$fracs\"},\"dependsOn\":[\"S1.1\",\"S1.4\"],\"assignTo\":\"$summary\",\"timeoutMs\":0},"
+                    + "{\"stepId\":\"S1.6\",\"streamId\":\"S1\",\"function\":\"interpretSolution\",\"type\":\"PROMPT\",\"model\":\"LOCAL\","
                     + "\"args\":{\"solutionSummary\":\"$summary\",\"verified\":\"$ok\"},"
-                    + "\"dependsOn\":[2,5],\"assignTo\":\"$interp\"},"
-                    + "{\"stepId\":7,\"function\":\"packageResult\",\"type\":\"CODE\","
+                    + "\"dependsOn\":[\"S1.2\",\"S1.5\"],\"assignTo\":\"$interp\",\"timeoutMs\":0},"
+                    + "{\"stepId\":\"S1.7\",\"streamId\":\"S1\",\"function\":\"packageResult\",\"type\":\"CODE\","
                     + "\"args\":{\"solution\":\"$sol\",\"verified\":\"$ok\",\"interpretation\":\"$interp\"},"
-                    + "\"dependsOn\":[6],\"assignTo\":\"$out\"}],"
-                    + "\"output\":\"$out\"}";
+                    + "\"dependsOn\":[\"S1.6\"],\"assignTo\":\"$out\",\"timeoutMs\":0}"
+                    + "]}],\"output\":\"$out\"}";
         }
 
         // LOCAL model — interpretation prose

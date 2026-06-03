@@ -27,7 +27,7 @@ prooopt:
 
     # CLOUD_FAST — cheap cloud tier; used for discovery and light fact-extraction.
     cloud-fast:
-      engine: anthropic
+      engine7: anthropic
       modelId: claude-haiku-4-5
       apiKey: ${ANTHROPIC_API_KEY}
       maxTokens: 1024

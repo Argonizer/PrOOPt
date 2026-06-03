@@ -12,3 +12,6 @@ logs/
 .classpath
 .project
 .DS_Store
+*.onnx.data
+*.onnx
+.run/

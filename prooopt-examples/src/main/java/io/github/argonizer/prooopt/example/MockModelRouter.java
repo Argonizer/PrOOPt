@@ -30,18 +30,18 @@ public class MockModelRouter implements ModelRouter {
     private static final String PLAN = """
             {
               "traceId": "legal-demo",
-              "steps": [
-                { "stepId": 1, "function": "normalizeWhitespace", "type": "CODE",
-                  "args": {"text": "${userInput}"}, "dependsOn": [], "assignTo": "$clean" },
-                { "stepId": 2, "function": "extractSigningDate", "type": "PROMPT", "model": "LOCAL",
-                  "args": {"text": "$clean"}, "dependsOn": [1], "assignTo": "$date" },
-                { "stepId": 3, "function": "detectRiskLevel", "type": "PROMPT", "model": "LOCAL",
-                  "args": {"text": "$clean"}, "dependsOn": [1], "assignTo": "$risk" },
-                { "stepId": 4, "function": "countWords", "type": "CODE",
-                  "args": {"text": "$clean"}, "dependsOn": [1], "assignTo": "$words" },
-                { "stepId": 5, "function": "generateSummary", "type": "PROMPT", "model": "CLOUD_ADVANCED",
-                  "args": {"text": "$clean"}, "dependsOn": [1], "assignTo": "$summary" }
-              ],
+              "streams": [{"streamId": "S1", "steps": [
+                { "stepId": "S1.1", "streamId": "S1", "function": "normalizeWhitespace", "type": "CODE",
+                  "args": {"text": "${userInput}"}, "dependsOn": [], "assignTo": "$clean", "timeoutMs": 0 },
+                { "stepId": "S1.2", "streamId": "S1", "function": "extractSigningDate", "type": "PROMPT", "model": "LOCAL",
+                  "args": {"text": "$clean"}, "dependsOn": ["S1.1"], "assignTo": "$date", "timeoutMs": 0 },
+                { "stepId": "S1.3", "streamId": "S1", "function": "detectRiskLevel", "type": "PROMPT", "model": "LOCAL",
+                  "args": {"text": "$clean"}, "dependsOn": ["S1.1"], "assignTo": "$risk", "timeoutMs": 0 },
+                { "stepId": "S1.4", "streamId": "S1", "function": "countWords", "type": "CODE",
+                  "args": {"text": "$clean"}, "dependsOn": ["S1.1"], "assignTo": "$words", "timeoutMs": 0 },
+                { "stepId": "S1.5", "streamId": "S1", "function": "generateSummary", "type": "PROMPT", "model": "CLOUD_ADVANCED",
+                  "args": {"text": "$clean"}, "dependsOn": ["S1.1"], "assignTo": "$summary", "timeoutMs": 0 }
+              ]}],
               "output": "$summary"
             }
             """;

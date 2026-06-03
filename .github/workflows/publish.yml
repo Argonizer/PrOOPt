@@ -1,0 +1,83 @@
+##
+## PrOOPt — Object-Oriented Prompt Engineering for Java.
+## Copyright (c) 2026 Akshay Rawal  –  MIT License
+##
+## Publish: build, sign, and deploy to Maven Central.
+##
+## Triggered on push to:
+##   release/**                — stable releases (e.g. release/0.1.0, release/1.0.0)
+##   pilot-implementation/**   — pre-release / candidate builds (e.g. pilot-implementation/0.2.0-RC1)
+##
+## Required repository secrets:
+##   CENTRAL_USERNAME    — Maven Central Portal token username
+##                         (Sonatype Central → Account → Generate User Token → Username)
+##   CENTRAL_PASSWORD    — Maven Central Portal token password
+##   GPG_PRIVATE_KEY     — Armored private key:
+##                           gpg --armor --export-secret-keys <KEY_ID>
+##   GPG_PASSPHRASE      — Passphrase protecting the private key
+##
+## Versioning:
+##   Maven Central does NOT accept SNAPSHOT versions. Ensure the <version> in pom.xml
+##   is a release qualifier before merging to a publish branch:
+##     release/**               → e.g. 0.1.0, 1.0.0
+##     pilot-implementation/**  → e.g. 0.2.0-RC1, 0.2.0-beta1
+##
+name: Publish to Maven Central
+
+on:
+  push:
+    branches:
+      - 'release/**'
+      - 'pilot-implementation/**'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish (Java 17)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # setup-java creates ~/.m2/settings.xml with a <server id="central"> entry
+      # whose username/password are taken from the env vars below.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      # Derive a human-readable release label from the branch name for the log.
+      - name: Resolve release label
+        id: label
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          # Strip known prefixes to get the bare version/label.
+          LABEL="${BRANCH#release/}"
+          LABEL="${LABEL#pilot-implementation/}"
+          echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish ${{ steps.label.outputs.label }} from ${{ steps.label.outputs.branch }}
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        # -P release activates the release profile defined in the parent POM:
+        #   maven-source-plugin  → attaches *-sources.jar
+        #   maven-javadoc-plugin → attaches *-javadoc.jar
+        #   maven-gpg-plugin     → signs all artifacts with .asc files
+        #   central-publishing-maven-plugin → uploads bundle to Central Portal and waits for validation
+        run: |
+          mvn --no-transfer-progress --batch-mode \
+              -P release \
+              deploy
