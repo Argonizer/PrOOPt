@@ -50,6 +50,8 @@
         <module>prooopt-core</module>
         <module>prooopt-runtime-local</module>
         <module>prooopt-runtime-cloud</module>
+        <module>prooopt-states</module>
+        <module>prooopt-states-spring-boot-starter</module>
         <module>prooopt-examples</module>
     </modules>
 
@@ -68,6 +70,8 @@
         <maven.compiler.release>${java.release}</maven.compiler.release>
 
         <!-- Dependency versions (managed centrally for all modules). -->
+        <guava.version>33.4.8-jre</guava.version>
+        <auto-service.version>1.1.1</auto-service.version>
         <spring.version>6.2.18</spring.version>
         <spring-boot.version>3.5.14</spring-boot.version>
         <aspectjweaver.version>1.9.24</aspectjweaver.version>
@@ -166,6 +170,81 @@
             <dependency>
                 <groupId>io.github.argonizer</groupId>
                 <artifactId>prooopt-runtime-cloud</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Guava: rate limiting and utilities used by prooopt-states. -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+
+            <!-- Google Auto-Service: generates META-INF/services entries. -->
+            <dependency>
+                <groupId>com.google.auto.service</groupId>
+                <artifactId>auto-service</artifactId>
+                <version>${auto-service.version}</version>
+                <optional>true</optional>
+            </dependency>
+
+            <!-- JPA annotations (provided/optional — no runtime dep in core). -->
+            <dependency>
+                <groupId>jakarta.persistence</groupId>
+                <artifactId>jakarta.persistence-api</artifactId>
+                <version>3.2.0</version>
+                <optional>true</optional>
+            </dependency>
+
+            <!-- Spring Boot starters managed centrally. -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-data-jpa</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-batch</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-configuration-processor</artifactId>
+                <version>${spring-boot.version}</version>
+                <optional>true</optional>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-test</artifactId>
+                <version>${spring-boot.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.batch</groupId>
+                <artifactId>spring-batch-test</artifactId>
+                <version>5.2.4</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- H2 in-memory database for persistence tests. -->
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>2.3.232</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Flyway schema management used in the starter. -->
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>11.9.1</version>
+            </dependency>
+
+            <!-- prooopt-states core — managed so the starter can import it. -->
+            <dependency>
+                <groupId>io.github.argonizer</groupId>
+                <artifactId>prooopt-states</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

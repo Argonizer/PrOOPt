@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ PrOOPt — Object-Oriented Prompt Engineering for Java.
+  ~
+  ~ Copyright (c) 2026 Akshay Rawal
+  ~ SPDX-License-Identifier: MIT
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.argonizer</groupId>
+        <artifactId>prooopt-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>prooopt-states</artifactId>
+    <name>PrOOPt States</name>
+    <description>
+        LLM-powered persona state management for PrOOPt. Annotate a POJO with @Persona and @Trait;
+        the LLM becomes the state transition function — resolving, evolving, and querying personas
+        without a hand-written rule table.
+    </description>
+
+    <dependencies>
+        <!-- PrOOPt Core — annotations, ModelRouter gateway, AOP interceptor. -->
+        <dependency>
+            <groupId>io.github.argonizer</groupId>
+            <artifactId>prooopt-core</artifactId>
+        </dependency>
+
+        <!-- Jackson: JSON serialisation for state blobs and diff payloads. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Guava: RateLimiter for generator batching, immutable collections. -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
+        <!--
+          JPA annotations only — no runtime JPA dep in core. The starter
+          provides the JPA implementation.  Marked optional so consumers that
+          do not use JPA are not forced to include the API jar.
+        -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Spring Boot autoconfigure — optional; not needed without Spring. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
