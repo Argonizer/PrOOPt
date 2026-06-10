@@ -48,6 +48,8 @@
 
     <modules>
         <module>prooopt-core</module>
+        <module>prooopt-apt</module>
+        <module>prooopt-maven-plugin</module>
         <module>prooopt-runtime-local</module>
         <module>prooopt-runtime-cloud</module>
         <module>prooopt-examples</module>
