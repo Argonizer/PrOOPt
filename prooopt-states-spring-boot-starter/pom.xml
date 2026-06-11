@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ PrOOPt — Object-Oriented Prompt Engineering for Java.
+  ~
+  ~ Copyright (c) 2026 Akshay Rawal
+  ~ SPDX-License-Identifier: MIT
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.argonizer</groupId>
+        <artifactId>prooopt-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>prooopt-states-spring-boot-starter</artifactId>
+    <name>PrOOPt States Spring Boot Starter</name>
+    <description>
+        Spring Boot autoconfiguration for prooopt-states. Provides JPA-backed PersonaStore,
+        DefaultPersonaManager beans, Spring Batch evolution and loop jobs, and the optional
+        DefaultPersonaPhaseManager. Zero developer configuration required — add the starter
+        and autowire PersonaManager&lt;T, ID&gt;.
+    </description>
+
+    <dependencies>
+        <!-- Core module — annotations, interfaces, engine, in-memory store. -->
+        <dependency>
+            <groupId>io.github.argonizer</groupId>
+            <artifactId>prooopt-states</artifactId>
+        </dependency>
+
+        <!-- Spring Boot starters (compile scope — pulled in transitively by apps). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- Configuration metadata processor — generates spring-configuration-metadata.json. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Flyway: schema creation when auto-ddl=true. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.batch</groupId>
+            <artifactId>spring-batch-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
