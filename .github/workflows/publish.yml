@@ -17,10 +17,11 @@
 ##   GPG_PASSPHRASE      — Passphrase protecting the private key
 ##
 ## Versioning:
-##   Maven Central does NOT accept SNAPSHOT versions. Ensure the <version> in pom.xml
-##   is a release qualifier before merging to a publish branch:
-##     release/**               → e.g. 0.1.0, 1.0.0
-##     pilot-implementation/**  → e.g. 0.2.0-RC1, 0.2.0-beta1
+##   The patch component is incremented automatically on every publish run.
+##   The bumped pom.xml files are committed back to the branch with [skip ci]
+##   so the next push always publishes a fresh version number.
+##   Maven Central does NOT accept SNAPSHOT versions; the base version in pom.xml
+##   must be a plain release qualifier (e.g. 0.1.1, 1.0.0).
 ##
 name: Publish to Maven Central
 
@@ -31,7 +32,7 @@ on:
       - 'pilot-implementation/**'
 
 permissions:
-  contents: read
+  contents: write   # needed to push the version-bump commit back to the branch
 
 jobs:
   publish:
@@ -56,18 +57,26 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      # Derive a human-readable release label from the branch name for the log.
-      - name: Resolve release label
-        id: label
+      # Read the current version, increment the patch number, and rewrite all
+      # pom.xml files in the reactor.  The new version is exposed as an output
+      # so subsequent steps can reference it in log messages.
+      - name: Bump patch version
+        id: version
         run: |
-          BRANCH="${GITHUB_REF_NAME}"
-          # Strip known prefixes to get the bare version/label.
-          LABEL="${BRANCH#release/}"
-          LABEL="${LABEL#pilot-implementation/}"
-          echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
-          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          CURRENT=$(mvn help:evaluate -Dexpression=project.version \
+                        -q -DforceStdout --no-transfer-progress)
+          # Split into major.minor.patch — handles plain x.y.z only.
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_PATCH=$(( PATCH + 1 ))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "Bumping ${CURRENT} → ${NEW_VERSION}"
+          mvn --no-transfer-progress --batch-mode \
+              versions:set -DnewVersion="${NEW_VERSION}" \
+              versions:commit
+          echo "old_version=${CURRENT}"  >> "$GITHUB_OUTPUT"
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish ${{ steps.label.outputs.label }} from ${{ steps.label.outputs.branch }}
+      - name: Publish ${{ steps.version.outputs.new_version }} from ${{ github.ref_name }}
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
@@ -81,3 +90,14 @@ jobs:
           mvn --no-transfer-progress --batch-mode \
               -P release \
               deploy
+
+      # Commit the bumped pom.xml files back to the branch so the next push
+      # always starts from a fresh base version.  [skip ci] prevents this
+      # commit from triggering another workflow run.
+      - name: Commit version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: bump version ${{ steps.version.outputs.old_version }} → ${{ steps.version.outputs.new_version }} [skip ci]"
+          git push
